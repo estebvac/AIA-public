@@ -3,6 +3,16 @@ import numpy as np
 
 def remove_background(image):
 
+	"""Function to remove the background of the image.
+
+    Parameter:
+    	image(numpy array): Original image.
+
+    Return:
+    	img_new(numpy array): Image without a background.
+
+   """
+
     # OTSU's thresholding
     ret, thresh = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
