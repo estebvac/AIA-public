@@ -3,7 +3,7 @@ import numpy as np
 
 def remove_background(image):
 
-	"""Function to remove the background of the image.
+    """Function to remove the background of the image.
 
     Parameter:
     	image(numpy array): Original image.
