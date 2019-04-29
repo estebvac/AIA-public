@@ -2,7 +2,7 @@ import numpy as np
 
 def is_right(image):
 
-	"""Function to define the breast orientation.
+    """Function to define the breast orientation.
 
     Parameter:
     	image(numpy array): Image to work with.
