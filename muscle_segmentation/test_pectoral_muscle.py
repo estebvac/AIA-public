@@ -1,5 +1,4 @@
 """ Import all required libraries """
-
 from os import listdir
 from os.path import isfile, join
 from muscle_segmentation import *

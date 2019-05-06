@@ -6,9 +6,13 @@ from matplotlib import pyplot as plt
 def normalize_image(x_input):
     """
     Function to normalize the image limits between 0 and 1
+    Parameters
+    ----------
+    x_input         Input image to normalize
 
-    :param x_input: Input image to normalize
-    :return:        Image with adjusted limits between [0., 1.]
+    Returns         Image with adjusted limits between [0., 1.]
+    -------
+
     """
     n = x_input - x_input.min()
     n = n / x_input.max()
@@ -19,8 +23,13 @@ def normalize_and_equalize(x_input):
     """
     Equalizes the histogram of a grayscale of any type
 
-    :param x_input: Input image to equalize
-    :return:        Equalized image with limits between [0, 255]
+    Parameters
+    ----------
+    x_input         Input image to equalize
+
+    Returns         Equalized image with limits between [0, 255]
+    -------
+
     """
     out = 255 * normalize_image(x_input)
     out = cv2.equalizeHist(out.astype(np.uint8))
@@ -31,8 +40,13 @@ def make_convex(x_input):
     """
     Returns the convex hull of the biggest blob in x_input.
 
-    :param x_input: Binary image containing the blob to make convex
-    :return:        Convex hull of the biggest blob of the image
+    Parameters
+    ----------
+    x_input         Binary image containing the blob to make convex
+
+    Returns         Convex hull of the biggest blob of the image
+    -------
+
     """
     # Make the biggest contour convex
     im2, contours, hierarchy = \
@@ -55,11 +69,15 @@ def auto_canny(image, sigma=0.33):
     https://www.pyimagesearch.com/2015/04/06/zero-parameter-automatic-
     canny-edge-detection-with-python-and-opencv/
 
-    :param image:   Input image
-    :param sigma:   The desired deviation of the Canny threshold
-    :return:        The edges of the image
-    """
+    Parameters
+    ----------
+    image           Input image
+    sigma           The desired deviation of the Canny threshold
 
+    Returns         The edges of the image
+    -------
+
+    """
     # compute the median of the single channel pixel intensities
     v = np.median(image)
 
@@ -75,8 +93,13 @@ def remove_background(x_input):
     """
     Removes the pixels of the mammography that does not belong to the breast
 
-    :param x_input: Input image
-    :return:        Breast mask (binary)
+    Parameters
+    ----------
+    x_input     Input image
+
+    Returns     Breast mask (binary)
+    -------
+
     """
     # Normalise the image
     x_normalized = 255 * normalize_image(x_input)
@@ -92,16 +115,20 @@ def remove_background(x_input):
 
 def flip_and_crop(x_input, breast_bw):
     """
-    Detect if the mammography is right or left and flips it if necessary, it creates a
+    It detects if the mammography is right or left and flips it if necessary, it creates a
     bounding rectangle around the breast pixels.
+    Parameters
+    ----------
+    x_input             Input image
+    breast_bw           Mask of the breast pixels
 
-    :param x_input:     Input image
-    :param breast_bw:   Mask of the breast pixels
-    :return:            The following array:
+    Returns             Array composed of:
                         breast_left:        breast left-aligned
                         breast_bw_left:     mask of the breast left-aligned
                         breast_orientation: string ("left/right")
                         boundaries:         coordinates of the bounding rectangle
+    -------
+
     """
     # Get the dimension of the image
     inp_h, inp_w = x_input.shape
@@ -130,10 +157,14 @@ def remove_muscle(x_input, debug=False):
     """
     Removes the breast muscle of the image, and returns a image containing the segmented
     breast region and its  binary mask
+    Parameters
+    ----------
+    x_input             Input image
+    debug               Boolean to show the intermediate process images
 
-    :param x_input:     Input image
-    :param debug:       Boolean to show the intermediate process images
-    :return:            A mask containing the breast without pectoral muscle and its mask
+
+    Returns             A mask containing the breast without pectoral muscle and its mask
+    -------
 
     """
     # Get the limits of the top and the bottom rows of the image:
@@ -312,10 +343,15 @@ def remove_muscle(x_input, debug=False):
 
 def pectoral_muscle_segmentation(x_input, debug=False):
     """
+    Perform the complete pectoral muscle segmentation task
+    Parameters
+    ----------
+    x_input         Input image to remove the breast muscle
+    debug           Bool to show the intermediate images
 
-    :param x_input: Input image to remove the breast muscle
-    :param debug:   Bool to show the intermediate images
-    :return:        A mask containing the breast mask without pectoral muscle
+    Returns         A mask containing the breast mask without pectoral muscle
+    -------
+
     """
     # resize image to speed up the process
     original_size = x_input.shape
