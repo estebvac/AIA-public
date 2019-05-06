@@ -126,13 +126,12 @@ def flip_and_crop(x_input, breast_bw):
     return [breast_left, breast_bw_left, breast_orientation, boundaries]
 
 
-def remove_muscle(x_input, x_bw, debug=False):
+def remove_muscle(x_input, debug=False):
     """
     Removes the breast muscle of the image, and returns a image containing the segmented
     breast region and its  binary mask
 
     :param x_input:     Input image
-    :param x_bw:        Mask of the breast pixels
     :param debug:       Boolean to show the intermediate process images
     :return:            A mask containing the breast without pectoral muscle and its mask
 
@@ -144,19 +143,22 @@ def remove_muscle(x_input, x_bw, debug=False):
     bottom_len = bottom_nonzero.shape[1]
 
     # Prepare the output images
-    breast_wo_muscle_bw = x_bw
-    breast_wo_muscle = np.copy(x_input)
+    segmented_breast = np.zeros_like(x_input)
+
+    if debug:
+        plt.imshow(x_input)
+        plt.show()
 
     # Check if it exists an inclination:
-    if top_len > 2 * bottom_len or top_len > 50:
+    if top_len > 2 * bottom_len or top_len > 45:
 
         # Get the coordinates of the region of interest
         x_input = x_input.astype(np.uint8)
         y_roi = np.int(0.8 * x_input.shape[0])
-        x_roi = top_nonzero[0, -1] - 20
+        x_roi = top_nonzero[0, -1]
 
         if x_roi > 0:
-
+            x_roi = x_roi
             # Crop the roi of the image
             roi_muscle = x_input[0:y_roi, 0:x_roi]
 
@@ -165,8 +167,11 @@ def remove_muscle(x_input, x_bw, debug=False):
             img_clahe = hand_clahe.apply(roi_muscle)
             roi_clahe = normalize_and_equalize(img_clahe)
 
-            # Apply Gaussian  blur to the image
-            roi_smooth = cv2.GaussianBlur(roi_clahe, (7, 7), 71, cv2.BORDER_REPLICATE)
+            #  perform pyramid mean shift filtering
+            # to aid the thresholding step
+            roi_muscle_bgr = cv2.cvtColor(roi_clahe, cv2.COLOR_GRAY2RGB)
+            shifted = cv2.pyrMeanShiftFiltering(roi_muscle_bgr, 5, 155)
+            roi_smooth = cv2.cvtColor(shifted, cv2.COLOR_BGR2GRAY)
 
             # Remove the lower triangular part
             triangle_cnt = np.array([(0, 0),
@@ -174,38 +179,70 @@ def remove_muscle(x_input, x_bw, debug=False):
                                      (np.int(x_roi), 0)])
             upper_triangle = np.zeros_like(roi_muscle).astype(np.uint8)
             cv2.drawContours(upper_triangle, [triangle_cnt], 0, 1, -1)
-            top_regions = roi_smooth * upper_triangle
 
-            # Apply K-means with K = 2 ( This approach obtained better results than OTSU)
-            flat_roi = top_regions.reshape((-1, 1))
-            flat_roi = np.float32(flat_roi)
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-            ret, label, center = \
-                cv2.kmeans(flat_roi, 3, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+            # WATERSHED ALGORITHM ADAPDED FROM
+            # https://www.pyimagesearch.com/2015/11/02/watershed-opencv/
+            # https://docs.opencv.org/3.4.3/d2/dbd/tutorial_distance_transform.html
+            thresh = cv2.threshold(roi_smooth, 0, 255,
+                                   cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+            thresh = thresh * upper_triangle
 
-            # Convert back into uint8, and make original image
-            center = np.uint8(center)
-            center = np.uint8(center / np.max(center))
-            res = center[label.flatten()]
-            roi_clustered = res.reshape(roi_smooth.shape)
+            # Perform the distance transform algorithm
+            dist = cv2.distanceTransform(thresh, cv2.DIST_L2, 3)
+            cv2.normalize(dist, dist, 0, 1.0, cv2.NORM_MINMAX)
 
-            # Extract the Connected Components of the image
-            n_labels, labels, stats, centroids = \
-                cv2.connectedComponentsWithStats(roi_clustered, 8)
+            # This will be the markers for the foreground objects
+            _, dist = cv2.threshold(dist, 0.25, 1.0, cv2.THRESH_BINARY)
+
+            # Create the CV_8U version of the distance image
+            # It is needed for findContours()
+            dist *= upper_triangle
+            dist_8u = dist.astype('uint8')
+            # Find total markers
+
+            _, contours, _ = cv2.findContours(dist_8u, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Create the marker image for the watershed algorithm
+            markers = np.zeros(dist.shape, dtype=np.int32)
+            # Draw the foreground markers
+            for i in range(len(contours)):
+                cv2.drawContours(markers, contours, i, (i + 1), -1)
+            # Draw the background marker
+            markers *= 2
+            markers += (1 - upper_triangle)
+
+            markers_orig = np.copy(markers)
+            # Perform the watershed algorithm
+            shifted = cv2.cvtColor(roi_smooth * upper_triangle, cv2.COLOR_GRAY2RGB)
+            cv2.watershed(shifted, markers)
+
+            markers_orig[markers == -1] = 2 * len(contours) + 3
+            cv2.watershed(shifted, markers_orig)
+
+            markers_orig += 1
+            markers_orig = markers_orig.astype(np.uint8)
+            labels_map = np.unique(markers_orig)
+            labels_map = labels_map[1:-1]
 
             # Searching the muscle candidates
-            muscle_cluster = np.zeros_like(roi_clustered)
-            muscle_region_found = False
+            muscle_cluster = np.zeros_like(markers_orig)
+            muscle_region_found = 0
 
-            for label in range(n_labels):
-                if stats[label, 0] < 0.2 * muscle_cluster.shape[1] and \
-                        stats[label, 1] < 0.2 * muscle_cluster.shape[0] and \
-                        stats[label, 3] != muscle_cluster.shape[0]:
-                    muscle_region_found = True
-                    muscle_cluster[labels == label] = 1
-            muscle_cluster = make_convex(muscle_cluster)
+            for l in labels_map:
+                # Extract the Connected Components of the image
+                region = 255 * (markers_orig == l)
+                n_labels, labels, stats, centroids = \
+                    cv2.connectedComponentsWithStats(region.astype(np.uint8()), 8)
 
-            if muscle_region_found:
+                for label in range(n_labels):
+                    if stats[label, 0] < 0.2 * muscle_cluster.shape[1] and \
+                            stats[label, 1] < 0.2 * muscle_cluster.shape[0] and \
+                            stats[label, 3] < muscle_cluster.shape[0] - 3 and \
+                            stats[label, 2] < muscle_cluster.shape[1] - 3:
+                        muscle_region_found = 1
+                        muscle_cluster[labels == label] = 1
+
+            # muscle_cluster = make_convex(muscle_cluster)
+            while 0 < muscle_region_found < 3:
 
                 # Take last non-zero elements of the muscle candidates
                 last_non_zero = muscle_cluster.shape[1] - \
@@ -216,48 +253,61 @@ def remove_muscle(x_input, x_bw, debug=False):
                 # Create coordinate vs last non-zero pairs and remove zeros
                 x_position = np.arange(muscle_cluster.shape[0])
                 x_position = x_position.reshape(-1, 1)
-                points = np.concatenate((x_position,
-                                         last_non_zero.reshape((-1, 1))), axis=1)
+                points = np.concatenate((x_position, last_non_zero), axis=1)
                 points = points[np.all(points != 0, axis=1)]
+
+                if muscle_region_found == 2:
+                    points[:, 1] = np.minimum.accumulate(points[:, 1])
 
                 # Variable to store the segmented muscle space
                 segmented_muscle = np.zeros_like(muscle_cluster).astype(np.uint8)
 
                 if points[:, 0].size != 0:
                     # Fit a curve to the obtained points
-                    order = 2
+                    order = 1
                     polynomial = np.poly1d(np.polyfit(points[:, 0], points[:, 1], order))
-                    x_fit = np.arange(2 * np.max(points[:, 0]).astype(np.int))
+
+                    x_fit = np.arange(segmented_muscle.shape[0])
                     x_fit = np.round(x_fit.reshape(-1, 1)).astype(np.int)
                     fitted = polynomial(x_fit).astype(np.int)
                     fitted = fitted.reshape(-1, 1)
+                    fitted = np.minimum.accumulate(fitted)
                     breast_points = np.concatenate((fitted, x_fit), axis=1)
 
+                    if np.arctan(polynomial[1])*180/np.pi < -10 and polynomial[0] > 0:
+                        muscle_region_found = 3
+                    else:
+                        segmented_muscle = np.zeros_like(muscle_cluster).astype(np.uint8)
+                        muscle_region_found += 1
+
                     # Draw the contours of the segmented muscle
-                    corner_points = np.array([[0, np.max(x_fit[:, 0])], [0, 0]])
+                    corner_points = np.array([[0, np.max(x_fit)], [0, 0]])
                     breast_points = \
                         np.concatenate((corner_points, breast_points), axis=0)
                     cv2.drawContours(segmented_muscle, [breast_points], 0, 1, -1)
 
                     # Save the segmentation in the outputs arrays
-                    segmented_muscle = 1 - segmented_muscle
-                    breast_wo_muscle_bw[0:y_roi, 0:x_roi] = 255 * segmented_muscle
-                    breast_wo_muscle = \
-                        breast_wo_muscle * normalize_image(breast_wo_muscle_bw)
+                    segmented_muscle = segmented_muscle * upper_triangle
+                    segmented_breast[0:y_roi, 0:x_roi] = 255 * segmented_muscle
 
-            if debug:
-                plt.subplot(1, 3, 1)
-                plt.imshow(roi_muscle)
-                plt.title("ROI muscle")
-                plt.subplot(1, 3, 2)
-                plt.imshow(roi_clustered)
-                plt.title("Connected components")
-                plt.subplot(1, 3, 3)
-                plt.imshow(breast_wo_muscle)
-                plt.title("Segmented image")
-                plt.show()
+                    if debug:
+                        plt.subplot(1, 4, 1)
+                        plt.imshow(roi_muscle)
+                        plt.title("ROI muscle")
+                        plt.subplot(1, 4, 2)
+                        plt.imshow(markers_orig)
+                        plt.title("Watershed markers")
+                        plt.subplot(1, 4, 3)
+                        plt.imshow(muscle_cluster)
+                        plt.title("Connected components")
+                        plt.subplot(1, 4, 4)
+                        plt.imshow(segmented_muscle)
+                        plt.title("Segmented image")
+                        plt.show()
+                else:
+                    muscle_region_found = 3
 
-    return [breast_wo_muscle, breast_wo_muscle_bw]
+    return segmented_breast
 
 
 def pectoral_muscle_segmentation(x_input, debug=False):
@@ -277,33 +327,22 @@ def pectoral_muscle_segmentation(x_input, debug=False):
 
     # Remove the background of the image
     breast_bw = remove_background(resized_image)
-    [breast_left, breast_bw_left, breast_orientation, boundaries] = \
+    [breast_left, _, breast_orientation, boundaries] = \
         flip_and_crop(resized_image, breast_bw)
     [x_b, y_b, w_b, h_b] = boundaries
 
     # Segment the Pectoral muscle
-    [_, breast_wo_muscle_bw] = \
-        remove_muscle(breast_left, breast_bw_left, debug)
+    segmented_breast = remove_muscle(breast_left, debug)
 
     # Correct the orientation if needed
     if breast_orientation == "right":
-        breast_wo_muscle_bw = cv2.flip(breast_wo_muscle_bw, 1)
+        segmented_breast = cv2.flip(segmented_breast, 1)
 
     # Place back the segmented regions
-    breast_bw[y_b:y_b + h_b, x_b:x_b + w_b] = breast_wo_muscle_bw
+    breast_bw[y_b:y_b + h_b, x_b:x_b + w_b] = segmented_breast
 
     # Restore to the original size
-    breast_wo_muscle_bw = \
+    segmented_breast = \
         cv2.resize(breast_bw, original_size[::-1], interpolation=cv2.INTER_NEAREST)
-    breast_wo_muscle = x_input * normalize_image(breast_wo_muscle_bw)
 
-    if debug:
-        plt.subplot(1, 2, 1)
-        plt.imshow(x_input)
-        plt.title("Original image")
-        plt.subplot(1, 2, 2)
-        plt.imshow(breast_wo_muscle_bw)
-        plt.title("Segmented region")
-        plt.show()
-
-    return [breast_wo_muscle, breast_wo_muscle_bw]
+    return segmented_breast
