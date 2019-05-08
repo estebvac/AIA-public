@@ -3,7 +3,7 @@ import numpy as np
 from . import util
 
 
-def iris_filter(image: np.ndarray, lines: int = 5, minDim: int = 10, maxDim: int = 20) -> np.ndarray:
+def iris_filter(image, lines = 5, minDim = 10, maxDim = 15):
     """
     Applies the Iris filter over the given greyscale image
 
@@ -63,7 +63,7 @@ def iris_filter(image: np.ndarray, lines: int = 5, minDim: int = 10, maxDim: int
     return out_filter
 
 
-def __calculate_coeff(gradient : np.ndarray, direction_vector : np.ndarray) -> float:
+def __calculate_coeff(gradient, direction_vector):
 
     convergence_coeff = np.empty(shape=(gradient.shape[0], 1), dtype=np.float32)
     convergence_index = np.empty(shape=(gradient.shape[0], 1), dtype=np.float32)

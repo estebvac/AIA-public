@@ -2,7 +2,7 @@ import cv2
 import numpy as np;
 
 
-def create_line_iterator(P1: np.ndarray, P2: np.ndarray, width: int, height: int) -> np.ndarray:
+def create_line_iterator(P1, P2, width, height):
     """
     DISCLAIMER: This line iterator code has been obtained and modified from:
     https://stackoverflow.com/questions/32328179/opencv-3-0-python-lineiterator
@@ -84,7 +84,7 @@ def create_line_iterator(P1: np.ndarray, P2: np.ndarray, width: int, height: int
     return itbuffer
 
 
-def calculate_point(center: np.ndarray, rad: int, angle: int) -> np.ndarray:
+def calculate_point(center, rad, angle):
     """
     Calculate the coordinates from an central point at a radius rad, over an angle.
 
