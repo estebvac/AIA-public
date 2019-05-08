@@ -1,17 +1,24 @@
 import cv2
 import numpy as np
 
-def remove_background(image):
+def remove_background_and_apply_clahe(image, clipLimit=2.0, tileGridSize=(8, 8)):
+    """
 
-    """Function to remove the background of the image.
+    Parameters
+    ----------
+    image : numpy array
+        Original image
+    clipLimit : double
+        Threshold for contrast limiting
+    tileGridSize : Size
+        Size of grid for histogram equalization
 
-    Parameter:
-    	image(numpy array): Original image.
+    Returns
+    -------
+    img_new : numpy array
+        Image without a background and applying CLAHE
 
-    Return:
-    	img_new(numpy array): Image without a background.
-
-   """
+    """
 
     # OTSU's thresholding
     ret, thresh = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -28,7 +35,7 @@ def remove_background(image):
     bit_and = cv2.bitwise_and(image, image, mask=mask)
 
     # CLAHE
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    clahe = cv2.createCLAHE(clipLimit, tileGridSize)
     img_new = clahe.apply(bit_and)
 
     return img_new
