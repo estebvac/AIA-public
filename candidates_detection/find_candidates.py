@@ -232,20 +232,22 @@ def fill_holes(the_image):
     return des
 
 
-def find_candidates(img, num_floors, debug = False):
-    """Function to find masses candidates based on morphological operations with linear structuring elements and thresholding
+def find_candidates(img, num_floors, debug=False):
+    """Function to find masses candidates based on linear structuring elements and thresholding
 
     Parameters
     ----------
     img : numpy array
         Full resolution original with original bit depth.
-    num_floors :
-        Number of floors for the gaussian pyramid (if 2, then size of original image is reduced by 1/2, if 3 by 1/3, etc)
+    num_floors : int
+        Number of floors for the gaussian pyramid. 3 is the recommended value
+    debug: bool
+        Boolean to activate debugging mode
 
     Returns
     -------
     all_scales : numpy array (3D)
-        Output binary images with the regions corresponding to the candidates. Last dimension corresponds to different scales
+        Output binary images with the regions corresponding to the candidates. Last dimension indicates scale
     """
 
     #Remove background from the image and apply CLAHE
@@ -258,7 +260,7 @@ def find_candidates(img, num_floors, debug = False):
         side = "l"
 
     if debug:
-        scaling_factor = 0.8
+        scaling_factor = 0.95
         show_image(filtered_image, "After removing background and CLAHE", 0.2)
         cv.waitKey(0)
 
@@ -270,7 +272,6 @@ def find_candidates(img, num_floors, debug = False):
         low_res = cv.pyrDown(filtered_image)
         filtered_image = low_res
 
-
     #Get mask of the breast
     img_bin = get_breast_mask(bring_to_256_levels(low_res)) #This returns a mask of the breast
     if debug:
@@ -279,11 +280,9 @@ def find_candidates(img, num_floors, debug = False):
 
     orig_rows = low_res.shape[0]
     orig_cols = low_res.shape[1]
-
-    #Get bounding box of the breast
+    #Crop image so that only breast region is analyzed
     x_b, y_b, w_b, h_b = cv.boundingRect(img_bin)
     boundaries = [x_b, y_b, w_b, h_b]
-
     # Crop the image
     breast_region = low_res[y_b:y_b + h_b, x_b:x_b + w_b]
     to_add = 300 #Number of pixels to add to the image
@@ -313,15 +312,17 @@ def find_candidates(img, num_floors, debug = False):
     d2 = int(482/pow(2, num_floors-1))
     if d2%2 == 0:
         d2 = d2+1
-    big_lines = np.arange(d1, d2, 25, dtype = np.uint8)
+
+    #Generate sizes for d2
+    big_lines = np.arange(d1, d2, 15, dtype = np.uint8)
 
     #Create output image
     output_image = np.zeros((orig_rows, orig_cols,1), dtype=np.uint8)
 
     for curr_big_line in big_lines:
 
-        #Define d1 as 0.7*d2 (Value adjusted heuristically)
-        small_lines = int(curr_big_line*(0.7))
+        #Define d1 as 0.6*d2 (Several values were tested and this one provided a better representation)
+        small_lines = int(curr_big_line*(0.6))
 
         #Make d1 odd:
         if(small_lines%2 == 0):
@@ -365,7 +366,6 @@ def find_candidates(img, num_floors, debug = False):
             ret, thresholded_image = cv.threshold(total, int(curr_thresh), 255, cv.THRESH_BINARY)
             thresholded_image = fill_holes(thresholded_image)
             analysed_image = discard_regions_processing(thresholded_image, connectivity, small_lines, curr_big_line)
-            #des_rem = improve_resulting_segmentation(bring_to_256_levels(analysed_image), connectivity)
             region_with_candidates = region_with_candidates.astype(np.uint8) | analysed_image.astype(np.uint8)
 
         if debug:
@@ -390,7 +390,7 @@ def find_candidates(img, num_floors, debug = False):
             show_image(bring_to_256_levels(output_image[:,:,i]), "Output image at scale " + str(i), scaling_factor)
             cv.waitKey(0)
 
-    #Come back to full resolution images
+    #Build full resolution images
     all_scales = np.zeros((full_res_rows, full_res_cols, output_image.shape[2]), dtype = np.uint8)
     for i in range(all_scales.shape[2]):
         curr_image = output_image[:,:,i]
