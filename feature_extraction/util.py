@@ -107,3 +107,14 @@ def calculate_point(center, rad, angle):
     out[0] = np.int_(center[0] + rad * np.cos(angle))
     out[1] = np.int_(center[1] + rad * np.sin(angle))
     return out
+
+def extract_contours(mask):
+    _, _, a = mask.shape
+    final_contours = [None] * a
+    for i in range(0, a):
+        img = mask[:,:,i].copy()
+        _, contours, _ = cv2.findContours(img,cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+        final_contours[i] = contours
+
+    return np.asarray(final_contours)
+
