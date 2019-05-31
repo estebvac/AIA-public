@@ -1,5 +1,5 @@
 import cv2
-import numpy as np;
+import numpy as np
 
 
 def create_line_iterator(P1, P2, width, height):

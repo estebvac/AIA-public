@@ -1,6 +1,6 @@
 import cv2
 import mahotas as mt
-import numpy
+import numpy as np
 from math import copysign, log10
 from skimage.transform import integral_image
 from skimage.feature import haar_like_feature
@@ -22,27 +22,40 @@ def f_hu_moments(roi):
     return hu_moments
 
 
-# Haar-like features
-def feature_haar(roi, feature_coord=None):
-    feature_type = 'type-2-x', 'type-2-y', 'type-4'
-    ii = integral_image(roi)
-    return haar_like_feature(ii, 0, 0, ii.shape[0], ii.shape[1], feature_type=feature_type, feature_coord=feature_coord)
+# Hu moments (Shape features)
+def feature_hu_moments(contour):
+    hu_moments = cv2.HuMoments(cv2.moments(contour))
+    # Log scale transform
+    for i in range(0, 7):
+        hu_moments[i] = -1 * copysign(1.0, hu_moments[i]) * log10(abs(hu_moments[i]))
+    return hu_moments.reshape(-1)
 
 
+def multi_scale_lbp_features(roi):
+    roi_img = cv2.normalize(roi, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
+    roi_or = np.copy(roi_img)
+    r = 1
+    R = 1
+    i = 0
+    lbp = np.zeros((5,36))
+    while R < 35:
+        lb_p = mt.features.lbp(roi_img, np.rint(R), 8, ignore_zeros=False)
+        lb_p = lb_p / np.sum(lb_p)
+        lbp[i, :] = lb_p
+        r_1 = r
+        r = r_1 * (2 / (1 - np.sin(np.pi / 8)) - 1)
+        R = (r + r_1) / 2
+        if np.floor(r - r_1) % 2 == 0:
+            k_size = np.int(np.ceil(r - r_1))
+        else:
+            k_size = np.int(np.floor(r - r_1))
+        std_dev = (k_size / 2)
+        roi_img = cv2.GaussianBlur(roi_or, (k_size, k_size), std_dev)
+        i += 1
 
-image = cv2.imread('22614266_1e5c3af078f74b05_MG_L_ML_ANON_layer_2_roi_2.tif')
+    return lbp
 
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+def feature_tas(roi):
+    roi_img = cv2.normalize(roi, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
+    return mt.features.tas(roi_img)
 
-features = feature_extraction_haralick(gray)
-print('Haralick features: ',features.shape)
-
-HM = f_hu_moments(gray)
-print('Hu moments: ', HM.shape)
-
-features = numpy.append(features, HM)
-print('Features: ', features.shape)
-
-#gray = cv2.resize(gray,(19,19))
-haar_feat = feature_haar(gray)
-print('Haar features: ', haar_feat.shape)

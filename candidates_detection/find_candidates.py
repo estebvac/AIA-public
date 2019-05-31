@@ -2,10 +2,10 @@
 import numpy as np
 import os
 import cv2 as cv
-from is_right import is_right
-from remove_background import remove_background
-from muscle_segmentation import remove_background as get_breast_mask
-from muscle_segmentation import normalize_image
+from preprocessing.is_right import is_right
+from preprocessing.remove_background import remove_background
+from preprocessing.muscle_segmentation import remove_background as get_breast_mask
+from preprocessing.muscle_segmentation import normalize_image
 
 
 def show_image(img_to_show, img_name, factor=1.0):
