@@ -3,9 +3,9 @@ import numpy as np
 import os
 import cv2 as cv
 from preprocessing.is_right import is_right
-from preprocessing.remove_background import remove_background
-from preprocessing.muscle_segmentation import remove_background as get_breast_mask
-from preprocessing.muscle_segmentation import normalize_image
+from preprocessing.remove_background import remove_background_and_apply_clahe
+from muscle_segmentation.muscle_segmentation import remove_background as get_breast_mask
+from muscle_segmentation.muscle_segmentation import normalize_image
 
 
 def show_image(img_to_show, img_name, factor=1.0):
@@ -251,7 +251,7 @@ def find_candidates(img, num_floors, debug=False):
     """
 
     #Remove background from the image and apply CLAHE
-    filtered_image = remove_background(bring_to_256_levels(img)) #This returns the filtered image
+    filtered_image = remove_background_and_apply_clahe(bring_to_256_levels(img)) #This returns the filtered image
 
     #Get side of the breast in the image
     if(is_right(filtered_image)):

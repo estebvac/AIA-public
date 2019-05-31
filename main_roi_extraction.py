@@ -3,19 +3,20 @@ from evaluation.dice_similarity import *
 from false_positive_reduction.false_positive_reduction import *
 from feature_extraction.contour_features import calculate_contour_features
 from feature_extraction.feature_extraction_optical_density import *
-from candidates_detection import find_candidates
+from candidates_detection.find_candidates import find_candidates
 import pandas as pd
 
+general_path = "/home/jhonmgb/datasets/aia/";
 
 #  Read the dataset
-raw_im_Path = r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images"
-gt_im_Path = r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\groundtruth"
+raw_im_Path = general_path + "images"
+gt_im_Path = general_path + "groundtruth"
 raw_images = [f for f in listdir(raw_im_Path) if isfile(join(raw_im_Path, f))]
 gt_images = [f for f in listdir(gt_im_Path) if isfile(join(gt_im_Path, f))]
 
 # Paths to store the ROIs
-false_positive_path = r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\false_positive"
-true_positive_path = r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\true_positive"
+false_positive_path = general_path + "false_positive"
+true_positive_path = general_path + "true_positive"
 
 # Ground truth images counter
 gt_counter = 0
@@ -23,18 +24,18 @@ gt_counter = 0
 # create a Dataframe to store the features
 d = []
 
-img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\22427705_d713ef5849f98b6c_MG_L_CC_ANON.tif", cv2.IMREAD_UNCHANGED)
-img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\22670147_e1f51192f7bf3f5f_MG_R_ML_ANON.tif", cv2.IMREAD_UNCHANGED)
-img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\50994408_cc9e66c5b31baab8_MG_R_CC_ANON.tif", cv2.IMREAD_UNCHANGED)
-img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\22427840_bbd6a3a35438c11b_MG_R_CC_ANON.tif", cv2.IMREAD_UNCHANGED)
-img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\24065707_5291e1aee2bbf5df_MG_R_ML_ANON.tif", cv2.IMREAD_UNCHANGED)
+#img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\22427705_d713ef5849f98b6c_MG_L_CC_ANON.tif", cv2.IMREAD_UNCHANGED)
+#img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\22670147_e1f51192f7bf3f5f_MG_R_ML_ANON.tif", cv2.IMREAD_UNCHANGED)
+#img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\50994408_cc9e66c5b31baab8_MG_R_CC_ANON.tif", cv2.IMREAD_UNCHANGED)
+#img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\22427840_bbd6a3a35438c11b_MG_R_CC_ANON.tif", cv2.IMREAD_UNCHANGED)
+#img = cv2.imread(r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images\24065707_5291e1aee2bbf5df_MG_R_ML_ANON.tif", cv2.IMREAD_UNCHANGED)
 
-all_scales = find_candidates(img, 3, debug=False)
-all_scales = border_false_positive_reduction(all_scales, img)
-for slice_counter in np.arange(all_scales.shape[2]):
-    slice = all_scales[:, :, slice_counter]
-    plt.imshow(slice, cmap='gray')
-    plt.show()
+#all_scales = find_candidates(img, 3, debug=False)
+#all_scales = border_false_positive_reduction(all_scales, img)
+#for slice_counter in np.arange(all_scales.shape[2]):
+#    slice = all_scales[:, :, slice_counter]
+#    plt.imshow(slice, cmap='gray')
+#    plt.show()
 
 
 # Loop over all the images
