@@ -2,8 +2,6 @@ import cv2
 import mahotas as mt
 import numpy as np
 from math import copysign, log10
-from skimage.transform import integral_image
-from skimage.feature import haar_like_feature
 
 
 def feature_extraction_haralick(roi):

@@ -1,13 +1,10 @@
 import numpy as np
 import cv2 as cv2
-from os import listdir, chdir
-from os.path import isfile, join
-from matplotlib import pyplot as plt
-from muscle_segmentation.muscle_segmentation import remove_background
-from candidates_detection.find_candidates import fill_holes
+from candidates_detection.utils import get_breast_mask, fill_holes
+
 
 def border_false_positive_reduction(all_scales, original_image):
-    mask_raw = remove_background(original_image)
+    mask_raw = get_breast_mask(original_image)
     mask = fill_holes(mask_raw)
     mask[:, :500] = 1
     mask[:, -500:] = 1
