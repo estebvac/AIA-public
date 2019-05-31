@@ -7,7 +7,6 @@ from candidates_detection import find_candidates
 import pandas as pd
 
 
-
 #  Read the dataset
 raw_im_Path = r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\images"
 gt_im_Path = r"C:\Users\esteb\Documents\AIA_PROJECT\dataset\groundtruth"
@@ -174,7 +173,6 @@ for img_counter in range(0, len(raw_images) - 2):
                 print("Writing: image N. ", img_counter, " slice: ", str(slice_counter), "of",
                       str(all_scales.shape[2] - 1), " ROI: ", str(roi_counter), " of ", str(len(contours) - 1),
                           " DICE: ", str(dice_index))
-
 
 df = pd.DataFrame(d)
 df.to_csv(r'C:\Users\esteb\Documents\AIA_PROJECT\dataset\features.csv', index=False)
