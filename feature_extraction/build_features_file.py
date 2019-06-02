@@ -14,9 +14,9 @@ def read_images(general_path):
     raw_im_Path = general_path + "images"
     gt_im_path = general_path + "groundtruth"
     raw_images =\
-        [f for f in listdir(raw_im_Path) if isfile(join(raw_im_Path, f))]
+        [f for f in listdir(raw_im_Path) if f.endswith(".tif") and isfile(join(raw_im_Path, f))]
     gt_images =\
-        [f for f in listdir(gt_im_path) if isfile(join(gt_im_path, f))]
+        [f for f in listdir(gt_im_path) if f.endswith(".tif") and isfile(join(gt_im_path, f))]
 
     # Paths to store the ROIs
     false_positive_path = general_path + "false_positive"
@@ -27,7 +27,7 @@ def read_images(general_path):
 
 
 def build_features_file(
-        raw_images, raw_im_path, gt_images, gt_im_path, false_positive_path, true_positive_path, out_path):
+    raw_images, raw_im_path, gt_images, gt_im_path, false_positive_path, true_positive_path, out_path):
     # create a Dataframe to store the features
     gt_counter = 0;
     d = []
@@ -131,20 +131,8 @@ def build_features_file(
                                 chdir(true_positive_path)
                                 label = 'TP'
 
-                    # Contour features
-                    cnt_features = calculate_contour_features(contours[roi_counter])
-
-                    # Haralick Features
-                    textures = feature_extraction_haralick(bring_to_256_levels(roi))
-
-                    # Hu moments:
-                    hu_moments = feature_hu_moments(contours[roi_counter])
-
-                    # Multi-Scale Local Binary Pattern features:
-                    lbp = multi_scale_lbp_features(roi)
-
-                    # TAS features
-                    tas_features = feature_tas(roi_bw)
+                    [cnt_features, textures, hu_moments, lbp, tas_features] = \
+                        extract_features(roi, contours[roi_counter], roi_bw)
 
                     d.append({
                         'File name': path_name,
@@ -172,3 +160,23 @@ def build_features_file(
 
     df = pd.DataFrame(d)
     df.to_csv(out_path + 'features.csv', index=False)
+
+
+def extract_features(roi, contour, roi_bw):
+    # Contour features
+    cnt_features = calculate_contour_features(contour)
+
+    # Haralick Features
+    textures = feature_extraction_haralick(bring_to_256_levels(roi))
+
+    # Hu moments:
+    hu_moments = feature_hu_moments(contour)
+
+    # Multi-Scale Local Binary Pattern features:
+    lbp = multi_scale_lbp_features(roi)
+
+    # TAS features
+    tas_features = feature_tas(roi_bw)
+
+    return [cnt_features, textures, hu_moments, lbp, tas_features]
+
