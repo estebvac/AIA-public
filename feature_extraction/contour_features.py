@@ -59,7 +59,7 @@ def ellipse_variance(contour):
         cv2.ellipse2Poly((int(ellipse[0][0]), int(ellipse[0][1])), (int(ellipse[1][0] / 2), int(ellipse[1][1] / 2)), int(ellipse[2]), 0, 360, 5)
     poly = poly.astype('float64')
     covar, _ = cv2.calcCovarMatrix(poly, 0, flags=cv2.COVAR_NORMAL + cv2.COVAR_ROWS)
-    inv_covar = np.linalg.inv(covar);
+    inv_covar = np.linalg.inv(covar + np.finfo(float).eps)
     gravity = center_of_gravity(contour);
     di = np.zeros((1, poly.shape[0]))
     i = 0
