@@ -3,15 +3,19 @@ import numpy as np
 
 
 def calculate_contour_features(contour):
-    list = [None] * 8
+    list = [None] * 10
     list[0] = solidity(contour)
     list[1] = convex_area(contour)
     list[2] = rectangularity(contour)
     list[3] = eccentricity(contour)
-    list[4] = center_of_gravity(contour)
-    list[5] = circularity_ratio(contour)
-    list[6] = min_max_axis_length(contour)
-    list[7] = ellipse_variance(contour)
+    cog = center_of_gravity(contour)
+    list[4] = cog[0]
+    list[5] = cog[1]
+    list[6] = circularity_ratio(contour)
+    min_max = min_max_axis_length(contour)
+    list[7] = min_max[0]
+    list[8] = min_max[1]
+    list[9] = ellipse_variance(contour)
 
     return list
 
