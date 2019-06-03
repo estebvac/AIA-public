@@ -50,7 +50,7 @@ def center_of_gravity(contour):
 def circularity_ratio(contour):
     area = cv2.contourArea(contour)
     perimeter = cv2.arcLength(contour, True)
-    return area/(perimeter * perimeter)
+    return 4*np.pi*area/(perimeter * perimeter)
 
 def min_max_axis_length(contour):
     rectangle = cv2.minAreaRect(contour)

@@ -167,7 +167,9 @@ def extract_features(roi, contour, roi_bw):
     cnt_features = calculate_contour_features(contour)
 
     # Haralick Features
-    textures = feature_extraction_haralick(bring_to_256_levels(roi))
+    masked_roi = np.multiply(roi,roi_bw)
+    #textures = feature_extraction_haralick(bring_to_256_levels(roi))
+    textures = feature_extraction_haralick_candidate(bring_to_256_levels(masked_roi))
 
     # Hu moments:
     hu_moments = feature_hu_moments(contour)

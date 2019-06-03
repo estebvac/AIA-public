@@ -3,6 +3,10 @@ import mahotas as mt
 import numpy as np
 from math import copysign, log10
 
+def feature_extraction_haralick_candidate(masked_roi):
+    textures = mt.features.haralick(masked_roi, ignore_zeros = True)
+    return textures.mean(axis=0)
+
 
 def feature_extraction_haralick(roi):
     textures = mt.features.haralick(roi)
@@ -10,9 +14,9 @@ def feature_extraction_haralick(roi):
 
 
 # Hu moments (Shape features)
-def f_hu_moments(roi):
-    _, bin_roi = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY)
-    central_moments = cv2.moments(bin_roi)
+def f_hu_moments(bin_roi):
+    #_, bin_roi = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY)
+    central_moments = cv2.moments(bin_roi, binaryImage = True)
     hu_moments = cv2.HuMoments(central_moments)
     # Log scale transform
     for i in range(0, 7):
