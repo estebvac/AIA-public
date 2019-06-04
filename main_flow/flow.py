@@ -1,10 +1,12 @@
+from os.path import join
+
 import cv2
 import numpy as np
 from candidates_detection.find_candidates import find_candidates
 from false_positive_reduction.false_positive_reduction import border_false_positive_reduction
 from evaluation.dice_similarity import extract_ROI
 from feature_extraction.build_features_file import extract_features
-from .split_features import create_entry, create_features_dataframe, drop_unwanted_features
+from .split_features import create_entry, create_features_dataframe, drop_unwanted_features, normalize_dataframe
 
 COLOURS =\
     [(255, 0, 0),
@@ -50,14 +52,18 @@ def __process_scales(filename, img, all_scales):
 
     return dataframe
 
-
-def get_rois_from_image(path, filename):
-    img = cv2.imread(path+filename, cv2.IMREAD_UNCHANGED)
+def process_single_image(path, filename):
+    img = cv2.imread(join(path, filename), cv2.IMREAD_UNCHANGED)
     all_scales = find_candidates(img, 3, debug=False)
     all_scales = border_false_positive_reduction(all_scales, img)
     features = __process_scales(path + filename, img, all_scales)
-    df_features = create_features_dataframe(features)
+    return [all_scales, features, img]
+
+def get_rois_from_image(path, filename):
+    [all_scales, features, img] = process_single_image(path, filename)
+    [df_features, tags] = create_features_dataframe(features)
     df_features = drop_unwanted_features(df_features)
+    df_features = normalize_dataframe(df_features)
     df_features.to_csv(path + "out.csv")
     #Classification.
     __generate_outputs(img, features, path + "out.tif")
