@@ -32,9 +32,6 @@ def label_findings(gt_path, filename, features, groundtruths_filenames):
     gt_index = groundtruths_filenames.index(filename)
     # Dilate to remove holes in the GT
     gt = cv2.imread(join(gt_path, groundtruths_filenames[gt_index]), 0)
-    kernel = np.ones((51, 51), np.uint8)
-    gt = cv2.morphologyEx(gt, cv2.MORPH_OPEN, kernel, iterations=1)
-
     _, contours, _ = cv2.findContours(gt, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
     gt_layers = []

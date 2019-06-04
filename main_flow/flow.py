@@ -56,7 +56,7 @@ def process_single_image(path, filename):
     img = cv2.imread(join(path, filename), cv2.IMREAD_UNCHANGED)
     all_scales = find_candidates(img, 3, debug=False)
     all_scales = border_false_positive_reduction(all_scales, img)
-    features = __process_scales(path + filename, img, all_scales)
+    features = __process_scales(join(path, filename), img, all_scales)
     return [all_scales, features, img]
 
 def get_rois_from_image(path, filename):
@@ -66,4 +66,4 @@ def get_rois_from_image(path, filename):
     df_features = normalize_dataframe(df_features)
     df_features.to_csv(path + "out.csv")
     #Classification.
-    __generate_outputs(img, features, path + "out.tif")
+    __generate_outputs(img, features, join(path, "out.tif"))
