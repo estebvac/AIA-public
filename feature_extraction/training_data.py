@@ -45,7 +45,7 @@ def label_findings(gt_path, filename, features, groundtruths_filenames):
     index = 0
     for roi in features:
         roi_mask = np.zeros_like(gt)
-        contour = roi.get("Contour")
+        contour = roi.get("Contour_np")
         cv2.drawContours(roi_mask, [contour], 0, 1, -1)
         dice = __get_optimal_dice(roi_mask, gt_layers)
         dices[index] = dice

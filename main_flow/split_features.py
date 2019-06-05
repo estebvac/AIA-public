@@ -56,7 +56,8 @@ def create_entry(path_name, slice_counter, roi_counter, cnt_features, textures, 
         'Hu moments': hu_moments,
         'lbp': lbp,
         'TAS features': tas_features,
-        'Contour': contour,
+        'Contour_np': contour,
+        'Contour': str(contour.tolist()),
         'Layer': layer
     }
 
