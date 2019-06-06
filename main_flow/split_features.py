@@ -40,13 +40,16 @@ def __unfold_features(list_of_features):
         lbp = dictionary.get("lbp").flatten()
         lbp = dict(zip(["lbp_" + str(val) for val in range(1, lbp.shape[0])], lbp))
         new_dictionary.update(lbp)
+        hog = dictionary.get("HOG features").flatten()
+        hog = dict(zip(["hog_" + str(val) for val in range(1, hog.shape[0])], hog))
+        new_dictionary.update(hog)
         new_feature_list[position] = new_dictionary
         position += 1
 
     return new_feature_list
 
 
-def create_entry(path_name, slice_counter, roi_counter, cnt_features, textures, hu_moments, lbp, tas_features, contour, layer):
+def create_entry(path_name, slice_counter, roi_counter, cnt_features, textures, hu_moments, lbp, tas_features, hog_features, contour, layer):
     dictionary = {
         'File name': path_name,
         'Slice': slice_counter,
@@ -56,6 +59,7 @@ def create_entry(path_name, slice_counter, roi_counter, cnt_features, textures, 
         'Hu moments': hu_moments,
         'lbp': lbp,
         'TAS features': tas_features,
+        'HOG features': hog_features,
         'Contour_np': contour,
         'Contour': str(contour.tolist()),
         'Layer': layer

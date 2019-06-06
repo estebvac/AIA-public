@@ -44,10 +44,10 @@ def __process_scales(filename, img, all_scales):
             cv2.drawContours(bw_img, contours, roi_counter, 1, -1)
             roi_bw, _ = extract_ROI(contours[roi_counter], bw_img)
 
-            [cnt_features, textures, hu_moments, lbp, tas_features] = \
+            [cnt_features, textures, hu_moments, lbp, tas_features, hog_features] = \
                 extract_features(roi, contours[roi_counter], roi_bw)
             entry = create_entry(
-                filename, slice_counter, roi_counter, cnt_features, textures, hu_moments, lbp, tas_features, contours[roi_counter], slice_counter)
+                filename, slice_counter, roi_counter, cnt_features, textures, hu_moments, lbp, tas_features, hog_features, contours[roi_counter], slice_counter)
             dataframe.append(entry)
 
     return dataframe
