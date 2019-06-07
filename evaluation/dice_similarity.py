@@ -1,6 +1,5 @@
 import numpy as np
 import cv2 as cv2
-import matplotlib.pyplot as plt
 
 
 def dice_similarity(segmented_image, ground_truth):
