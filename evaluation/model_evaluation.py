@@ -9,6 +9,7 @@ import progressbar
 from prettytable import PrettyTable
 from sklearn.model_selection import StratifiedKFold
 import xgboost as xgb
+from scipy import interpolate
 
 
 def recover_filename(dataframe):
@@ -124,6 +125,7 @@ def build_confusion_matrix(path, dataframe, show=False):
         tp, fp, fn = single_image_confusion_matrix(resized_gt, resized_pred)
         confusion_matrix[image_number, :] = np.array((tp, fp, fn))
         bar.update(image_number + 1)
+    bar.finish()
 
     if show:
         tp, fp, fn = np.sum(confusion_matrix, axis=0)
@@ -137,17 +139,17 @@ def build_confusion_matrix(path, dataframe, show=False):
 
 
 def calculate_FROC(path, dataframe, probability, n_samples):
-    froc_values = np.zeros((n_samples + 1, 3))
-    n_conf_matrix = np.zeros((n_samples + 1, 3))
+    froc_values = np.zeros((n_samples + 2, 3))
+    n_conf_matrix = np.zeros((n_samples + 2, 3))
     # Set the FROC values in the Boundary:
     froc_values[n_samples, :] = np.array([1, 0, 0])
-
-    thresholds = np.linspace(0.2, 0.99, n_samples)
+    thresholds = np.linspace(0.3, 0.99, n_samples)
+    np.insert(thresholds, 0, 0)
     for number in range(0, n_samples):
         # Get the  response at a threshold
         n_samples = np.float32(n_samples)
         thresh = thresholds[number]
-        print('Threshold = ' + str(thresh))
+        print('\n Threshold = ' + str(thresh) )
         dataframe['Prediction'] = (probability > thresh).astype('int')
 
         # Calculate the confusion matrix for the given threshold
@@ -157,7 +159,10 @@ def calculate_FROC(path, dataframe, probability, n_samples):
         # Calculate the sensitivity and the
         [tp, fp, fn] = confusion_matrix
         sensitivity = tp / (tp + fn)
-        f_pp_i = fp / len(dataframe['File name'].unique())
+        N_images = len(dataframe['File name'].unique())
+        f_pp_i = fp / N_images
+        print('\n Sensitivity= ' + str(sensitivity) + ' @   FP/Image= ' + str(f_pp_i) +
+              ' # Images= '+ str(N_images) + '\n')
         froc_values[number, :] = np.array([thresh, sensitivity, f_pp_i])
 
     return froc_values
@@ -180,7 +185,7 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
 
     # Create a Cross validation object
     cv = StratifiedKFold(n_splits=folds)
-    k_froc_vals = np.zeros((FROC_samples + 1, 3, folds))
+    k_froc_vals = np.zeros((FROC_samples + 2, 3, folds))
     fold = 0
 
     for train, test in cv.split(images_name["File name"], images_name["Class"]):
@@ -209,11 +214,12 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
 
         bst = xgb.train(params, dtrain, num_rounds)
         probability = bst.predict(dtest)
-        print(probability)
 
         ########################################################################
         ########################################################################
-
+        N_images = len(test_metadata_k['File name'].unique())
+        print('Evaluating Fold #' + str(fold+1) + ' of ' + str(folds) + ' with ' +
+              str(N_images) + ' images' + '\n')
         # Calculate the FROC curve for the resulting model
         froc_vals = calculate_FROC(path, test_metadata_k, probability, FROC_samples)
 
@@ -226,17 +232,23 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
 
 def plot_k_cv_froc(k_froc_vals):
     folds = k_froc_vals.shape[2]
-    K_froc_mean = np.zeros_like(k_froc_vals[:,:,0])
+    K_froc_mean = np.zeros_like(k_froc_vals[:, :, 0])
+    tprs = []
+    mean_fpr = np.linspace(0, 5, 100)
     for i in range(folds):
         plot_FROC(k_froc_vals[:, :, i], param='g--', alpha=0.4)
-        K_froc_mean += k_froc_vals[:,:,i]
+        fp = k_froc_vals[:, 2, i]
+        tpr = k_froc_vals[:, 1, i]
+        f = interpolate.interp1d(fp, tpr, bounds_error=False, fill_value=np.amax(tpr))
+        mean_tpr = f(mean_fpr)
+        tprs.append(mean_tpr)
 
-    K_froc_mean /= folds
-    plot_FROC(K_froc_mean, param='r-', alpha=1)
-    tprs = k_froc_vals[:, 1, :]
-    std_tpr = np.std(tprs, axis=1)
-    mean_tpr = K_froc_mean[:, 1]
-    mean_fpr = K_froc_mean[:, 2]
+    mean_tpr = np.mean(tprs, axis=0)
+    mean_froc = np.zeros((len(mean_tpr), 3))
+    mean_froc[:, 1] = mean_tpr
+    mean_froc[:, 2] = mean_fpr
+    plot_FROC(mean_froc, param='r-', alpha=1)
+    std_tpr = np.std(tprs, axis=0)
     tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
     tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
     plt.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.5,
