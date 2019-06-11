@@ -44,10 +44,10 @@ def __process_scales(filename, img, all_scales):
             cv2.drawContours(bw_img, contours, roi_counter, 1, -1)
             roi_bw, _ = extract_ROI(contours[roi_counter], bw_img)
 
-            [cnt_features, textures, hu_moments, lbp, tas_features] = \
+            [cnt_features, textures, hu_moments, lbp, tas_features, hog_features] = \
                 extract_features(roi, contours[roi_counter], roi_bw)
             entry = create_entry(
-                filename, slice_counter, roi_counter, cnt_features, textures, hu_moments, lbp, tas_features, contours[roi_counter], slice_counter)
+                filename, slice_counter, roi_counter, cnt_features, textures, hu_moments, lbp, tas_features, hog_features, contours[roi_counter], slice_counter)
             dataframe.append(entry)
 
     return dataframe
@@ -67,3 +67,16 @@ def get_rois_from_image(path, filename):
     df_features.to_csv(path + "out.csv")
     #Classification.
     __generate_outputs(img, features, join(path, "out.tif"))
+
+
+def segment_single_image(path, filename):
+    total_features = []
+    [all_scales, features, img] = process_single_image(path, filename)
+
+    total_features.extend(features)
+    [df_features, tags] = create_features_dataframe(features)
+    df_features = drop_unwanted_features(df_features)
+    print(df_features.to_numpy())
+
+    return all_scales
+

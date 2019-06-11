@@ -57,7 +57,7 @@ def label_findings(gt_path, filename, features, groundtruths_filenames):
     return [labels, dices]
 
 
-def __get_features_and_classify(dataset_path, images_name):
+def __get_features_and_label(dataset_path, images_name):
     [raw_im_path, gt_im_path, _, gt_images, _, _] = read_images(dataset_path)
 
     total_labels = []
@@ -120,7 +120,7 @@ def prepate_datasets(dataset_path):
     testing = testing_images_with_masses + testing_images_without_masses
 
     print("Preparing training set!\n")
-    [training_labels, training_features, training_dices] = __get_features_and_classify(dataset_path, training)
+    [training_labels, training_features, training_dices] = __get_features_and_label(dataset_path, training)
 
     [df_features, tags] = create_features_dataframe(training_features)
     training_features = 0
@@ -136,7 +136,7 @@ def prepate_datasets(dataset_path):
 
 
     print("Preparing testing set!\n")
-    [testing_labels, testing_features, testing_dices] = __get_features_and_classify(dataset_path, testing)
+    [testing_labels, testing_features, testing_dices] = __get_features_and_label(dataset_path, testing)
     [df_features, tags] = create_features_dataframe(testing_features)
     testing_features = 0
     classes_and_dices = pd.DataFrame(np.array([testing_labels, testing_dices]).transpose(), columns=["Class", "Dice"])

@@ -24,8 +24,9 @@ def border_false_positive_reduction(all_scales, original_image):
         _, contours, _ = cv2.findContours(slice, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for i in range(len(contours)):
             # Get the size of the ROI
+            # We set this parameters thus we are looking for masses and not for microcalsificatins
             _, _, w_b, h_b = cv2.boundingRect(contours[i])
-            if( 35 < w_b < 1100 and 35 < h_b < 1100):
+            if( 75 < w_b < 1100 and 75 < h_b < 1100):
                 cv2.drawContours(markers, contours, i, (i + 1), -1)
 
         # Discard the ROI that are in the boundaries

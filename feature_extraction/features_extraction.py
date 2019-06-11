@@ -2,6 +2,7 @@ import cv2
 import mahotas as mt
 import numpy as np
 from math import copysign, log10
+from skimage.feature import hog
 
 def feature_extraction_haralick_candidate(masked_roi):
     textures = mt.features.haralick(masked_roi, ignore_zeros = True)
@@ -60,4 +61,15 @@ def multi_scale_lbp_features(roi):
 def feature_tas(roi):
     roi_img = cv2.normalize(roi, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
     return mt.features.tas(roi_img)
+
+def features_hog(roi):
+    width = np.int(roi.shape[0] / 10)
+    height = np.int(roi.shape[1] / 10)
+    w_t = np.int((roi.shape[0] - width * 10) / 2)
+    h_t = np.int((roi.shape[1] - height * 10) / 2)
+    crop_roi = roi[w_t: w_t + 10*width, h_t: h_t + 10*height]
+    f_hog = hog(crop_roi, orientations=8, pixels_per_cell=(width, height),
+             cells_per_block=(1, 1), visualize=False, multichannel=False)
+    return f_hog
+
 

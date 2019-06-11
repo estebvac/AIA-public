@@ -7,3 +7,5 @@ pandas
 scikit-image
 mahotas
 progressbar
+prettytable
+xgboost

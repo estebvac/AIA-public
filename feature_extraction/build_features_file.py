@@ -8,6 +8,7 @@ from candidates_detection.utils import bring_to_256_levels
 from feature_extraction.features_extraction import *
 from feature_extraction.contour_features import *
 
+
 def read_images(general_path):
 
     #  Read the dataset
@@ -180,5 +181,8 @@ def extract_features(roi, contour, roi_bw):
     # TAS features
     tas_features = feature_tas(roi_bw)
 
-    return [cnt_features, textures, hu_moments, lbp, tas_features]
+    # HOG features
+    hog_features = features_hog (roi)
+
+    return [cnt_features, textures, hu_moments, lbp, tas_features, hog_features]
 
