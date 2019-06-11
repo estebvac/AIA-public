@@ -72,6 +72,8 @@ def match_image_markers(marker_gt, marker_pred):
     n_pred_masses = np.amax(marker_pred)
     tp = 0
     if n_masses > 0:
+        # This take into account only the fp on the images with no gt
+        fp = 0
         for mass in range(n_masses):
             mass_img = 1. * (marker_gt == (mass + 1))
             if n_pred_masses > 0:
@@ -82,8 +84,10 @@ def match_image_markers(marker_gt, marker_pred):
                     if dice > 0.2:
                         tp += 1
                         break
+    else:
+        # This take into account only the fp on the images with no gt
+        fp = n_pred_masses
 
-    fp = n_pred_masses - tp
     fn = n_masses - tp
     return tp, fp, fn
 
@@ -143,8 +147,8 @@ def calculate_FROC(path, dataframe, probability, n_samples):
     n_conf_matrix = np.zeros((n_samples + 2, 3))
     # Set the FROC values in the Boundary:
     froc_values[n_samples, :] = np.array([1, 0, 0])
-    thresholds = np.linspace(0.3, 0.99, n_samples)
-    np.insert(thresholds, 0, 0)
+    thresholds = 1 - 2/( np.exp(3.5 * np.arange(n_samples)/n_samples +1))
+    thresholds = np.insert(thresholds, 0, 0)
     for number in range(0, n_samples):
         # Get the  response at a threshold
         n_samples = np.float32(n_samples)
@@ -153,7 +157,7 @@ def calculate_FROC(path, dataframe, probability, n_samples):
         dataframe['Prediction'] = (probability > thresh).astype('int')
 
         # Calculate the confusion matrix for the given threshold
-        confusion_matrix = build_confusion_matrix(path, dataframe, False)
+        confusion_matrix = build_confusion_matrix(path, dataframe, True)
         n_conf_matrix[number, :] = confusion_matrix
 
         # Calculate the sensitivity and the
@@ -199,9 +203,12 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
         test_names_k = images_name.iloc[test]["File name"]
         test_selected_k = train_metadata["File name"].isin(test_names_k)
         x_test_k = train_dataframe[test_selected_k].to_numpy()
+        y_test_k = train_metadata[test_selected_k]["Class"]
 
         test_metadata_k = train_metadata[test_selected_k]
         test_metadata_k.index = range(len(test_metadata_k))
+
+        print('\n Train with ' + str(len(y_train_k)) + ' Test with ' + str(len(y_test_k)) + ' ROIs \n')
 
         #########################################################################
         #           DEFINE HERE THE MODEL FIT/ PREDICT
@@ -255,4 +262,4 @@ def plot_k_cv_froc(k_froc_vals):
                      label=r'$\pm$ 1 std. dev.')
     plt.show()
 
-    return k_froc_vals, K_froc_mean
+    return k_froc_vals, mean_froc, std_tpr
