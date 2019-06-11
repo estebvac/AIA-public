@@ -190,7 +190,7 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
     images_name["Class"] = images_name["File name"].isin(contain_tp).astype(int)
 
     # Create a Cross validation object
-    cv = StratifiedKFold(n_splits=folds)
+    cv = StratifiedKFold(n_splits=folds, shuffle=True)
     k_froc_vals = np.zeros((FROC_samples + 2, 3, folds))
     fold = 0
 
