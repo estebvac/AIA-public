@@ -7,8 +7,10 @@ import os
 from evaluation.dice_similarity import dice_similarity
 import progressbar
 from prettytable import PrettyTable
+from classifiers.cascade_random_forests import trainCascadeRandomForestClassifier, applyCascade, get_probs, subdivide_dataset_k
 from sklearn.model_selection import StratifiedKFold
 import xgboost as xgb
+from sklearn.preprocessing import StandardScaler
 from scipy import interpolate
 
 
@@ -229,6 +231,84 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
 
     return k_froc_vals
 
+def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metadata, path, num_layers_to_test):
+    images_name = pd.DataFrame(train_metadata["File name"].unique())
+    images_name["Class"] = 0
+    images_name = images_name.rename(columns = {0: "File name"})
+    contain_tp = train_metadata[train_metadata["Class"] == 1]["File name"].unique()
+    images_name["Class"] = images_name["File name"].isin(contain_tp).astype(int)
+
+    # Create a Cross validation object
+    cv = StratifiedKFold(n_splits=folds)
+    k_froc_vals = np.zeros((FROC_samples + 2, 3, folds))
+    fold = 0
+
+    for train, test in cv.split(images_name["File name"], images_name["Class"]):
+        # Generate the K-training set
+        train_names_k = images_name.iloc[train]["File name"]
+        train_selected_k = train_metadata["File name"].isin(train_names_k)
+        x_train_k = train_dataframe[train_selected_k].to_numpy()
+        num_features = x_train_k.shape[1]
+        y_train_k = train_metadata[train_selected_k]["Class"].to_numpy()
+
+        # Generate the K-testing set
+        test_names_k = images_name.iloc[test]["File name"]
+        test_selected_k = train_metadata["File name"].isin(test_names_k)
+        x_test_k = train_dataframe[test_selected_k].to_numpy()
+
+        test_metadata_k = train_metadata[test_selected_k]
+        test_metadata_k.index = range(len(test_metadata_k))
+
+        # Normalize data
+        scaler = StandardScaler()
+        scaler.fit(x_train_k)
+        X_train = scaler.transform(x_train_k)
+        X_test = scaler.transform(x_test_k)
+
+        #########################################################################
+        #           Cascade Random Forest
+        #########################################################################
+        percentage_validation = 0.3
+        negative_multiplier = 1
+        training_features_tp, training_features_ntp, validation_features_tp, validation_features_ntp = subdivide_dataset_k(x_train_k, y_train_k, percentage_validation, negative_multiplier)
+        NP = training_features_tp.shape[0]
+
+        #Concatenate training subsets and internal validation subsets
+        fullX = np.concatenate((training_features_tp,training_features_ntp))
+        fullY = np.concatenate((np.ones((training_features_tp.shape[0]), dtype=np.uint32), np.zeros((training_features_ntp.shape[0]), dtype=np.uint32)))
+        fullValidX = np.concatenate((validation_features_tp,validation_features_ntp))
+        fullValidY = np.concatenate((np.ones((validation_features_tp.shape[0]), dtype=np.uint32), np.zeros((validation_features_ntp.shape[0]), dtype=np.uint32)))
+
+        #Define parameters for the RF classifier
+        d_ntree = 500
+        d_mtry = int(np.sqrt(num_features))
+        ntree_first = 100
+        ntree_last = 1000
+        ntree_num_elems = 10
+        mtry_first = int(0.5*np.sqrt(num_features))
+        mtry_last = int(2*np.sqrt(num_features))
+        mtry_num_elems = 10
+        parameters = {'n_estimators':np.linspace(ntree_first,ntree_last,ntree_num_elems, dtype=int), 'max_features':np.linspace(mtry_first, mtry_last, mtry_num_elems, dtype=int)}
+        st = 0.9
+
+        layers = trainCascadeRandomForestClassifier(d_ntree, d_mtry, NP, parameters, st, training_features_tp, training_features_ntp, fullX, fullY, fullValidX, fullValidY, num_layers_to_test)
+        probability = get_probs(layers[:num_layers_to_test], x_test_k)
+
+
+        ########################################################################
+        ########################################################################
+        N_images = len(test_metadata_k['File name'].unique())
+        print('Evaluating Fold #' + str(fold+1) + ' of ' + str(folds) + ' with ' +
+              str(N_images) + ' images' + '\n')
+        # Calculate the FROC curve for the resulting model
+        froc_vals = calculate_FROC(path, test_metadata_k, probability, FROC_samples)
+
+        # Store the Results to calculate the mean
+        k_froc_vals[:,:,fold] = froc_vals
+        fold += 1
+
+    return k_froc_vals
+
 
 def plot_k_cv_froc(k_froc_vals):
     folds = k_froc_vals.shape[2]
@@ -255,4 +335,4 @@ def plot_k_cv_froc(k_froc_vals):
                      label=r'$\pm$ 1 std. dev.')
     plt.show()
 
-    return k_froc_vals, K_froc_mean
+    return k_froc_vals, K_froc_mean 
