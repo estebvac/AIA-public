@@ -226,17 +226,21 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
 
         ########################################################################
         ########################################################################
-        N_images = len(test_metadata_k['File name'].unique())
-        print('Evaluating Fold #' + str(fold+1) + ' of ' + str(folds) + ' with ' +
-              str(N_images) + ' images' + '\n')
-        # Calculate the FROC curve for the resulting model
-        froc_vals = calculate_FROC(path, test_metadata_k, probability, FROC_samples)
+        if fold == 0:
+            test_metadata_T = test_metadata_k
+            probability_T = probability
+        else:
+            test_metadata_T = pd.concat([test_metadata_T, test_metadata_k], ignore_index=True)
+            probability_T = np.concatenate((probability_T, probability), axis=0)
 
-        # Store the Results to calculate the mean
-        k_froc_vals[:,:,fold] = froc_vals
         fold += 1
 
-    return k_froc_vals
+    N_images = len(test_metadata_T['File name'].unique())
+    print('Evaluating FROC ' + ' with ' + str(N_images) + ' images' + '\n')
+    # Calculate the FROC curve for the resulting model
+    froc_vals = calculate_FROC(path, test_metadata_T, probability_T, FROC_samples)
+
+    return froc_vals
 
 def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metadata, path, num_layers_to_test):
     images_name = pd.DataFrame(train_metadata["File name"].unique())
@@ -304,17 +308,21 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
 
         ########################################################################
         ########################################################################
-        N_images = len(test_metadata_k['File name'].unique())
-        print('Evaluating Fold #' + str(fold+1) + ' of ' + str(folds) + ' with ' +
-              str(N_images) + ' images' + '\n')
-        # Calculate the FROC curve for the resulting model
-        froc_vals = calculate_FROC(path, test_metadata_k, probability, FROC_samples)
+        if fold == 0:
+            test_metadata_T = test_metadata_k
+            probability_T = probability
+        else:
+            test_metadata_T = pd.concat([test_metadata_T, test_metadata_k], ignore_index=True)
+            probability_T = np.concatenate((probability_T, probability), axis=0)
 
-        # Store the Results to calculate the mean
-        k_froc_vals[:,:,fold] = froc_vals
         fold += 1
 
-    return k_froc_vals
+    N_images = len(test_metadata_T['File name'].unique())
+    print('Evaluating FROC ' + ' with ' + str(N_images) + ' images' + '\n')
+    # Calculate the FROC curve for the resulting model
+    froc_vals = calculate_FROC(path, test_metadata_T, probability_T, FROC_samples)
+
+    return froc_vals
 
 
 def plot_k_cv_froc(k_froc_vals):
