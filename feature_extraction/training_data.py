@@ -96,9 +96,9 @@ def partition_data(dataset_path):
     index_imgs_with_masses= np.arange(len(images_with_masses))
     index_imgs_without_masses = np.arange(len(images_without_masses))
     images_with_masses_train =\
-        np.array(np.random.choice(index_imgs_with_masses,np.uint(0.75*len(index_imgs_with_masses)),replace=False))
+        np.array(np.random.choice(index_imgs_with_masses, np.uint(1*len(index_imgs_with_masses)),replace=False))
     images_without_masses_train =\
-        np.array(np.random.choice(index_imgs_without_masses,np.uint(0.8*len(index_imgs_without_masses)),replace=False))
+        np.array(np.random.choice(index_imgs_without_masses, np.uint(1*len(index_imgs_without_masses)),replace=False))
 
     # GET THE TRAINING SET:
     training_images_with_masses = [images_with_masses[i] for i in images_with_masses_train]
@@ -117,7 +117,7 @@ def prepate_datasets(dataset_path):
         partition_data(dataset_path)
 
     training = training_images_with_masses + training_images_without_masses
-    testing = testing_images_with_masses + testing_images_without_masses
+    #testing = testing_images_with_masses + testing_images_without_masses
 
     print("Preparing training set!\n")
     [training_labels, training_features, training_dices] = __get_features_and_label(dataset_path, training)
@@ -135,14 +135,14 @@ def prepate_datasets(dataset_path):
     tags = 0
 
 
-    print("Preparing testing set!\n")
-    [testing_labels, testing_features, testing_dices] = __get_features_and_label(dataset_path, testing)
-    [df_features, tags] = create_features_dataframe(testing_features)
+    #print("Preparing testing set!\n")
+    #[testing_labels, testing_features, testing_dices] = __get_features_and_label(dataset_path, testing)
+    #[df_features, tags] = create_features_dataframe(testing_features)
     testing_features = 0
-    classes_and_dices = pd.DataFrame(np.array([testing_labels, testing_dices]).transpose(), columns=["Class", "Dice"])
-    tags = pd.concat([tags, classes_and_dices], axis=1)
-    df_features = drop_unwanted_features(df_features)
+    #classes_and_dices = pd.DataFrame(np.array([testing_labels, testing_dices]).transpose(), columns=["Class", "Dice"])
+    #tags = pd.concat([tags, classes_and_dices], axis=1)
+    #df_features = drop_unwanted_features(df_features)
     # df_features = normalize_dataframe(df_features)
 
-    df_features.to_csv(join(dataset_path, "testing.csv"))
-    tags.to_csv(join(dataset_path, "testing_metadata.csv"))
+    #df_features.to_csv(join(dataset_path, "testing.csv"))
+    #tags.to_csv(join(dataset_path, "testing_metadata.csv"))

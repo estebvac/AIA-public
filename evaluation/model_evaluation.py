@@ -74,8 +74,6 @@ def match_image_markers(marker_gt, marker_pred):
     n_pred_masses = np.amax(marker_pred)
     tp = 0
     if n_masses > 0:
-        # This take into account only the fp on the images with no gt
-        fp = 0
         for mass in range(n_masses):
             mass_img = 1. * (marker_gt == (mass + 1))
             if n_pred_masses > 0:
@@ -86,10 +84,8 @@ def match_image_markers(marker_gt, marker_pred):
                     if dice > 0.2:
                         tp += 1
                         break
-    else:
-        # This take into account only the fp on the images with no gt
-        fp = n_pred_masses
 
+    fp = n_pred_masses - tp
     fn = n_masses - tp
     return tp, fp, fn
 
@@ -149,8 +145,10 @@ def calculate_FROC(path, dataframe, probability, n_samples):
     n_conf_matrix = np.zeros((n_samples + 2, 3))
     # Set the FROC values in the Boundary:
     froc_values[n_samples, :] = np.array([1, 0, 0])
-    thresholds = 1 - 2/( np.exp(3.5 * np.arange(n_samples)/n_samples +1))
-    thresholds = np.insert(thresholds, 0, 0)
+    slope = 5
+    # thresholds are selected to emphasize values close to 0 and 1
+    thresholds = 0.5 + 0.5 * np.tanh(slope * np.arange(n_samples) / n_samples - slope / 2)
+    thresholds = np.insert(thresholds, 0, [0.00001, 0.001])
     for number in range(0, n_samples):
         # Get the  response at a threshold
         n_samples = np.float32(n_samples)
@@ -322,7 +320,7 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
     # Calculate the FROC curve for the resulting model
     froc_vals = calculate_FROC(path, test_metadata_T, probability_T, FROC_samples)
 
-    return froc_vals
+    return froc_vals, test_metadata_T, probability_T
 
 
 def plot_k_cv_froc(k_froc_vals):
