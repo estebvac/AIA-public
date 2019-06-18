@@ -96,6 +96,79 @@ def trainCascadeRandomForestClassifier(d_ntree, d_mtry, NP, parameters, st, trai
   return layers
 
 
+
+def trainCascadeRandomForestClassifierFaster(d_ntree, d_mtry, NP, parameters, st, training_features_tp, training_features_ntp, fullX, fullY, fullValidX, fullValidY, max_num_layers, current_fold):
+  #Implement RF
+  k = 0
+  current_sensitivity = 0
+  dropped = 1 #value 1 to ensure at least one iteration
+  layers = [] #List to put every layer of the cascade
+  layers_default = []
+  while(dropped>0 and training_features_ntp.shape[0]>=NP and k<=max_num_layers):
+    k=k+1
+    #First, create RF with default parameters (as described in the paper)
+    d_rf = RandomForestClassifier(n_estimators=d_ntree, max_features=d_mtry, random_state=0)
+    d_rf.fit(fullX, fullY)
+    d_probs = d_rf.predict_proba(training_features_ntp) #Get probabilities for each negative sample
+    prob_sort_indexes = np.argsort(d_probs[:,1]) #Sort probabilities of being positive in ascending order
+    neg_next_training = training_features_ntp[prob_sort_indexes[:NP], :] #These are the negative samples for the balanced set
+    neg_next_training_remaining = training_features_ntp[prob_sort_indexes[NP:], :] #Remaining negatives (most mass-like candidates)
+    current_sensitivity = 0
+    #Now start grid search
+    speedup = False
+    while(current_sensitivity < st):
+      xx = np.concatenate((training_features_tp, neg_next_training))
+      yy = np.concatenate((np.ones((training_features_tp.shape[0]), dtype=np.uint32), np.zeros((neg_next_training.shape[0]), dtype=np.uint32)))
+      for ntree_sub in parameters['n_estimators']:
+        for mtry_sub in parameters['max_features']:
+          _ = system('cls')
+          print("********************************************")
+          print("Current fold:", str(current_fold))
+          print("Current layer index: ", str(k))
+          print("Amount of FP in current layer: ", str(training_features_ntp.shape[0]))
+          print("********************************************")
+          print("Current parameters of the search grid: ")
+          print("n_estimators: ", ntree_sub)
+          print("max_features: ", mtry_sub)
+          print("Num TP: ", training_features_tp.shape[0])
+          print("Num NTP: ", neg_next_training.shape[0])
+          rf = RandomForestClassifier(n_estimators = ntree_sub, max_features=mtry_sub, random_state =0) #Create base model
+          rf.fit(xx, yy)
+          current_sensitivity = get_sensitivity(rf, fullValidX, fullValidY)
+          if(np.abs(st - current_sensitivity) > 0.2):
+            speedup = True
+          else:
+            speedup = False
+          print("Sensitivity of current grid: ", str(current_sensitivity))
+          if(current_sensitivity>=st or speedup): 
+            break
+        if(current_sensitivity>=st or speedup):
+          break
+      if(current_sensitivity < st or speedup): #If sensitivity could not be reached and number of negatives still higher than NP
+        #10% of negatives goes to remaining and loop again
+        print("***Removing 10 percent of the negative samples***")
+        num_samples_neg_next_training = neg_next_training.shape[0]
+        pivot = int(num_samples_neg_next_training*0.9)
+        temp = neg_next_training[pivot:, :]
+        neg_next_training = neg_next_training[:pivot,:]
+        neg_next_training_remaining = np.concatenate((neg_next_training_remaining, temp))
+        speedup = False
+        current_sensitivity = 0
+    print("Sensitivity threshold reached!!!!!!!!!!!!!!!!!!!!!")
+    #After sensitivity threshold is reached, classify remaining and discard some of them   
+    predicted_after_st = rf.predict(neg_next_training_remaining)
+    dropped = len(np.where(predicted_after_st==0)[0])
+    print(str(dropped), " samples are dropped in the current layer")
+    to_keep = np.where(predicted_after_st==1)[0]
+    training_features_ntp = neg_next_training_remaining[to_keep]
+    layers.append(rf)
+    layers_default.append(d_rf)
+    fullX = np.concatenate((training_features_tp,training_features_ntp))
+    fullY = np.concatenate((np.ones((training_features_tp.shape[0]), dtype=np.uint32), np.zeros((training_features_ntp.shape[0]), dtype=np.uint32)))
+  return layers
+
+
+
 def applyCascade(layers, test_features):
   origninal_rows = test_features.shape[0]
   to_keep = []

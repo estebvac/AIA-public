@@ -41,25 +41,26 @@ def plot_confusion_matrix(cm, classes, ax,
     ax.set_xlabel('Predicted label')
 
 
-test_data = pd.read_csv(r'../dataset_hog/testing.csv')
-test_metadata = pd.read_csv(r'../dataset_hog/testing_metadata.csv')
-test_metadata = recover_filename(test_metadata)
-train_data = pd.read_csv(r'../dataset_hog/training.csv')
-train_metadata = pd.read_csv(r'../dataset_hog/training_metadata.csv')
-train_metadata = recover_filename(train_metadata)
+#test_data = pd.read_csv(r'../dataset_hog/testing.csv')
+#test_metadata = pd.read_csv(r'../dataset_hog/testing_metadata.csv')
+#test_metadata = recover_filename(test_metadata)
+#train_data = pd.read_csv(r'../dataset_hog/training.csv')
+#train_metadata = pd.read_csv(r'../dataset_hog/training_metadata.csv')
+#train_metadata = recover_filename(train_metadata)
 
-total_data = pd.concat([train_data, test_data])
-total_metadata = pd.concat([train_metadata, test_metadata])
+total_data = pd.read_csv(r'../dataset_hog_with_fp/training.csv')
+total_metadata = pd.read_csv(r'../dataset_hog_with_fp/training_metadata.csv')
+total_metadata = recover_filename(total_metadata)
 total_metadata.shape
 
 # Define the parameters for the Cross Validation
 folds = 10   #@param {type:"number"}
 FROC_samples = 15 #@param {type:"number"}
-train_dataframe = train_data
-train_metadata = train_metadata
+#train_dataframe = train_data
+#train_metadata = train_metadata
 index_max_layer = 4 # Means 5 layers maximum
 
 k_froc_vals = Kfold_FROC_curve_cascadeRF(folds, FROC_samples, total_data, total_metadata, path, index_max_layer)
 np.save('froc_k10_5layers.npy', k_froc_vals)
-k_froc_vals, K_froc_mean, std = plot_k_cv_froc(k_froc_vals)
+plot_FROC(k_froc_vals)
 

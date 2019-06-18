@@ -7,7 +7,7 @@ import os
 from evaluation.dice_similarity import dice_similarity
 import progressbar
 from prettytable import PrettyTable
-from classifiers.cascade_random_forests import trainCascadeRandomForestClassifier, applyCascade, get_probs, subdivide_dataset_k
+from classifiers.cascade_random_forests import trainCascadeRandomForestClassifier, trainCascadeRandomForestClassifierFaster, applyCascade, get_probs, subdivide_dataset_k
 from sklearn.model_selection import StratifiedKFold
 import xgboost as xgb
 from sklearn.preprocessing import StandardScaler
@@ -248,7 +248,7 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
     images_name["Class"] = images_name["File name"].isin(contain_tp).astype(int)
 
     # Create a Cross validation object
-    cv = StratifiedKFold(n_splits=folds)
+    cv = StratifiedKFold(n_splits=folds, shuffle=True)
     k_froc_vals = np.zeros((FROC_samples + 2, 3, folds))
     fold = 0
 
@@ -271,8 +271,8 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
         # Normalize data
         scaler = StandardScaler()
         scaler.fit(x_train_k)
-        X_train = scaler.transform(x_train_k)
-        X_test = scaler.transform(x_test_k)
+        x_train_k = scaler.transform(x_train_k)
+        x_test_k = scaler.transform(x_test_k)
 
         #########################################################################
         #           Cascade Random Forest
@@ -300,7 +300,7 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
         parameters = {'n_estimators':np.linspace(ntree_first,ntree_last,ntree_num_elems, dtype=int), 'max_features':np.linspace(mtry_first, mtry_last, mtry_num_elems, dtype=int)}
         st = 0.9
 
-        layers = trainCascadeRandomForestClassifier(d_ntree, d_mtry, NP, parameters, st, training_features_tp, training_features_ntp, fullX, fullY, fullValidX, fullValidY, num_layers_to_test)
+        layers = trainCascadeRandomForestClassifierFaster(d_ntree, d_mtry, NP, parameters, st, training_features_tp, training_features_ntp, fullX, fullY, fullValidX, fullValidY, num_layers_to_test, fold)
         probability = get_probs(layers[:num_layers_to_test], x_test_k)
 
 
