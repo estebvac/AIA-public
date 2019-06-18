@@ -15,15 +15,43 @@ from scipy import interpolate
 
 
 def recover_filename(dataframe):
+    '''
+    Modifies the File name field of the datagrame to match with the path
+
+    Parameters
+    ----------
+    dataframe   pandas dataframe
+                Dataframe contains the metadata of the ROIs
+
+    Returns     pandas dataframe
+    -------
+
+    '''
     new = dataframe['File name'].str.split("images", n=2, expand=True)[1]
     new = new.str.replace("\\", "")
     dataframe['File name'] = new
     return dataframe
 
 
-def draw_predicted_image(path, dataframe, image_name):
+def draw_predicted_image(path, dataframe, image_name, field = 'Prediction'):
+    '''
+    Draws an overlap of the predicted mask over the original image and returns
+    both a mask of the prediction and an overlaped version of the image.
+
+    Parameters
+    ----------
+    path:           String containing the path to the database
+    dataframe       pandas dataframe contains the metadata of the ROIs
+    image_name      String containing the image to process.
+
+    Returns
+    -------
+    img             numpy array containing the original image
+    mask            numpy array containing the resulting segmentation mask
+
+    '''
     new = dataframe[dataframe['File name'] == image_name]
-    new = new[new['Prediction'] == 1]
+    new = new[new[field] == 1]
     img = cv2.imread(path + '/images/' + image_name)
     mask = np.zeros((img.shape[0], img.shape[1]))
     for number in range(len(new)):
@@ -37,10 +65,22 @@ def draw_predicted_image(path, dataframe, image_name):
 
 
 def plot_image_and_mask(img, mask):
+    '''
+    Plots the original image and the segmentation result
+
+    Parameters
+    ----------
+    img:        numpy array of the image to plot
+    mask        numpy array of the mask to plot
+
+    Returns
+    -------
+
+    '''
     fig = plt.figure(figsize=(8, 8), dpi= 80, facecolor='w', edgecolor='k')
     plt.subplot(1, 2, 1)
     plt.imshow(img)
-    plt.title('Resulting segmented image')
+    plt.title('Overlapped image')
     plt.subplot(1, 2, 2)
     plt.imshow(mask, cmap='gray')
     plt.title('Segmentation mask')
@@ -48,6 +88,20 @@ def plot_image_and_mask(img, mask):
 
 
 def load_ground_truth(path, image_name, img):
+    '''
+    Load the ground truth image
+
+    Parameters
+    ----------
+    path:           String containing the path to the database
+    image_name:     String containing the image to process.
+    img:            Original image, used to get the size of the gt
+
+    Returns
+    -------
+    gt_mask:        numpy array containing the ground truth mask
+
+    '''
     gt_path = path + '/groundtruth/' + image_name
     exists = os.path.isfile(str(gt_path))
     gt_mask = np.zeros_like(img[:, :, 1])
@@ -60,6 +114,18 @@ def load_ground_truth(path, image_name, img):
 
 
 def create_marker_image(mask):
+    '''
+    Converts a mask of an image containing ROIs to a marker version containing multiple levels
+
+    Parameters
+    ----------
+    mask:       numpy array input mask to convert to marker
+
+    Returns
+    -------
+    marker:     numpy array image with a different number for each labeled region
+
+    '''
     mask = mask.astype(np.uint8())
     _, contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     marker = np.zeros_like(mask)
@@ -70,6 +136,21 @@ def create_marker_image(mask):
 
 
 def match_image_markers(marker_gt, marker_pred):
+    '''
+    Computes the TP, FP and FN of the segmentation result it compares the
+    markers of the ground truth and the markers of the predicted output.
+    A region is labeled as TP when the dice score is greater than 0.2.
+
+    Parameters
+    ----------
+    marker_gt       numpy array containing the ground truth regions.
+    marker_pred     numpy array containing the predicted output.
+
+    Returns
+    -------
+    tp, fp, fn      scalars metrics of TP FP and FN
+
+    '''
     n_masses = np.amax(marker_gt)
     n_pred_masses = np.amax(marker_pred)
     tp = 0
@@ -91,6 +172,21 @@ def match_image_markers(marker_gt, marker_pred):
 
 
 def single_image_confusion_matrix(gt_mask, predicted_mask, show=False):
+    '''
+    Computes and prints a simple confusion matrix of a single image
+
+
+    Parameters
+    ----------
+    gt_mask             numpy array containing the ground truth regions.
+    predicted_mask      numpy array containing the predicted output.
+    show                boolean to print the resultin confusion matrix
+
+    Returns
+    -------
+    tp, fp, fn          scalars metrics of TP FP and FN
+    '''
+
     marker_gt = create_marker_image(gt_mask)
     marker_pred = create_marker_image(predicted_mask)
     match_image_markers(marker_gt, marker_pred)
@@ -107,6 +203,20 @@ def single_image_confusion_matrix(gt_mask, predicted_mask, show=False):
 
 
 def build_confusion_matrix(path, dataframe, show=False):
+    '''
+    Computes and prints a  confusion matrix of all the images in a dataframe
+
+
+    Parameters
+    ----------
+    ath:            String containing the path to the database
+    dataframe       pandas dataframe contains the metadata of the ROIs
+    show            boolean to print the resultin confusion matrix
+
+    Returns
+    -------
+                    numpy array containing the total TP,  FP and FN of the dataframe
+    '''
     file_names = dataframe['File name'].unique()
     number_of_images = len(file_names)
     confusion_matrix = np.zeros((number_of_images, 3))
@@ -145,10 +255,9 @@ def calculate_FROC(path, dataframe, probability, n_samples):
     n_conf_matrix = np.zeros((n_samples + 2, 3))
     # Set the FROC values in the Boundary:
     froc_values[n_samples, :] = np.array([1, 0, 0])
-    slope = 5
+    slope = 10
     # thresholds are selected to emphasize values close to 0 and 1
     thresholds = 0.5 + 0.5 * np.tanh(slope * np.arange(n_samples) / n_samples - slope / 2)
-    thresholds = np.insert(thresholds, 0, [0.00001, 0.001])
     for number in range(0, n_samples):
         # Get the  response at a threshold
         n_samples = np.float32(n_samples)
@@ -207,8 +316,8 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
 
         test_metadata_k = train_metadata[test_selected_k]
         test_metadata_k.index = range(len(test_metadata_k))
-
-        print('\n Train with ' + str(len(y_train_k)) + ' Test with ' + str(len(y_test_k)) + ' ROIs \n')
+        print(' \n Fold #: ' + str(fold + 1))
+        print('Train with ' + str(len(y_train_k)) + ' Test with ' + str(len(y_test_k)) + ' ROIs \n')
 
         #########################################################################
         #           DEFINE HERE THE MODEL FIT/ PREDICT
@@ -233,12 +342,8 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
 
         fold += 1
 
-    N_images = len(test_metadata_T['File name'].unique())
-    print('Evaluating FROC ' + ' with ' + str(N_images) + ' images' + '\n')
-    # Calculate the FROC curve for the resulting model
-    froc_vals = calculate_FROC(path, test_metadata_T, probability_T, FROC_samples)
+    return test_metadata_T, probability_T
 
-    return froc_vals
 
 def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metadata, path, num_layers_to_test):
     images_name = pd.DataFrame(train_metadata["File name"].unique())
@@ -273,6 +378,9 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
         scaler.fit(x_train_k)
         x_train_k = scaler.transform(x_train_k)
         x_test_k = scaler.transform(x_test_k)
+
+        print(' \n Fold #: ' + str(fold + 1))
+        print('Train with ' + str(len(y_train_k)) + ' Test with ' + str(len(x_test_k)) + ' ROIs \n')
 
         #########################################################################
         #           Cascade Random Forest
@@ -317,34 +425,5 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
 
     N_images = len(test_metadata_T['File name'].unique())
     print('Evaluating FROC ' + ' with ' + str(N_images) + ' images' + '\n')
-    # Calculate the FROC curve for the resulting model
-    froc_vals = calculate_FROC(path, test_metadata_T, probability_T, FROC_samples)
 
-    return froc_vals, test_metadata_T, probability_T
-
-
-def plot_k_cv_froc(k_froc_vals):
-    folds = k_froc_vals.shape[2]
-    tprs = []
-    mean_fpr = np.linspace(0, 5, 100)
-    for i in range(folds):
-        plot_FROC(k_froc_vals[:, :, i], param='g--', alpha=0.4)
-        fp = k_froc_vals[:, 2, i]
-        tpr = k_froc_vals[:, 1, i]
-        f = interpolate.interp1d(fp, tpr, bounds_error=False, fill_value=np.amax(tpr))
-        mean_tpr = f(mean_fpr)
-        tprs.append(mean_tpr)
-
-    mean_tpr = np.mean(tprs, axis=0)
-    mean_froc = np.zeros((len(mean_tpr), 3))
-    mean_froc[:, 1] = mean_tpr
-    mean_froc[:, 2] = mean_fpr
-    plot_FROC(mean_froc, param='r-', alpha=1)
-    std_tpr = np.std(tprs, axis=0)
-    tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
-    tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
-    plt.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.5,
-                     label=r'$\pm$ 1 std. dev.')
-    plt.show()
-
-    return k_froc_vals, mean_froc, std_tpr
+    return test_metadata_T, probability_T
