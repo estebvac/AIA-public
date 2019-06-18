@@ -12,7 +12,7 @@ image_name = "24065584_d8205a09c8173f44_MG_L_CC_ANON.tif"
 
 #flow.get_rois_from_image(path, image)
 
-#prepate_datasets(path)
+prepate_datasets(path)
 
 
-flow.segment_single_image(path_img, image_name)
+#flow.segment_single_image(path_img, image_name)

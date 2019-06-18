@@ -209,7 +209,7 @@ def build_confusion_matrix(path, dataframe, show=False):
 
     Parameters
     ----------
-    ath:            String containing the path to the database
+    path:            String containing the path to the database
     dataframe       pandas dataframe contains the metadata of the ROIs
     show            boolean to print the resultin confusion matrix
 
@@ -251,6 +251,22 @@ def build_confusion_matrix(path, dataframe, show=False):
 
 
 def calculate_FROC(path, dataframe, probability, n_samples):
+    '''
+    Calculate the TPs, FPs and FNs of the dataframe for multiple operation points
+    it returns the points that compose the FROC curve
+
+    Parameters
+    ----------
+    path:           String containing the path to the database
+    dataframe       pandas dataframe contains the metadata of the ROIs
+    probability     numpy array prediction probability of the classifier
+    n_samples       number of operating points thresholds to use
+
+    Returns
+    -------
+    froc_values     operation points of the classifier
+
+    '''
     froc_values = np.zeros((n_samples + 2, 3))
     n_conf_matrix = np.zeros((n_samples + 2, 3))
     # Set the FROC values in the Boundary:
@@ -282,6 +298,19 @@ def calculate_FROC(path, dataframe, probability, n_samples):
 
 
 def plot_FROC(froc_values, param='b-', alpha=1):
+    '''
+    plots the resulting FROC curve of the dataset
+
+    Parameters
+    ----------
+    froc_values     operating points resulting from calculate_FROC
+    param           parameters to plot the curve
+    alpha           transparency of the curve
+
+    Returns
+    -------
+
+    '''
     plt.plot(froc_values[:, 2], froc_values[:, 1], param, alpha=alpha)
     plt.axis([0, 2, 0, 1])
     plt.grid()
@@ -289,7 +318,24 @@ def plot_FROC(froc_values, param='b-', alpha=1):
     plt.ylabel('Sensitivity')
 
 
-def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata, path):
+def Kfold_FROC_curve(model, folds, train_dataframe, train_metadata, path):
+    '''
+    Performs cross validation for the XGboost model
+
+    Parameters
+    ----------
+    model               Referencing classifier model
+    folds               Number of folds to be used
+    train_dataframe     pandas dataframe contains the features of the ROIs
+    train_metadata      pandas dataframe contains the metadata of the ROIs
+    path:               String containing the path to the database
+
+    Returns
+    -------
+    test_metadata_T     Resulting metadata organized according to the cross-validation
+    probability_T       Resulting probability of the classifier to all the available data
+
+    '''
     images_name = pd.DataFrame(train_metadata["File name"].unique())
     images_name["Class"] = 0
     images_name = images_name.rename(columns = {0: "File name"})
@@ -298,7 +344,6 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
 
     # Create a Cross validation object
     cv = StratifiedKFold(n_splits=folds, shuffle=True)
-    k_froc_vals = np.zeros((FROC_samples + 2, 3, folds))
     fold = 0
 
     for train, test in cv.split(images_name["File name"], images_name["Class"]):
@@ -345,7 +390,22 @@ def Kfold_FROC_curve(model, folds, FROC_samples, train_dataframe, train_metadata
     return test_metadata_T, probability_T
 
 
-def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metadata, path, num_layers_to_test):
+def Kfold_FROC_curve_cascadeRF(folds, train_dataframe, train_metadata, path, num_layers_to_test):
+    '''
+    Performs cross validation for the cascade random forest model
+
+    Parameters
+    ----------
+    folds                   Number of folds to be used
+    train_dataframe         pandas dataframe contains the features of the ROIs
+    train_metadata          pandas dataframe contains the metadata of the ROIs
+    path:                   String containing the path to the database
+    num_layers_to_test      the number of layers of the random forest classifier
+
+    Returns
+    -------
+
+    '''
     images_name = pd.DataFrame(train_metadata["File name"].unique())
     images_name["Class"] = 0
     images_name = images_name.rename(columns = {0: "File name"})
@@ -354,7 +414,6 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
 
     # Create a Cross validation object
     cv = StratifiedKFold(n_splits=folds, shuffle=True)
-    k_froc_vals = np.zeros((FROC_samples + 2, 3, folds))
     fold = 0
 
     for train, test in cv.split(images_name["File name"], images_name["Class"]):
@@ -422,8 +481,5 @@ def Kfold_FROC_curve_cascadeRF(folds, FROC_samples, train_dataframe, train_metad
             probability_T = np.concatenate((probability_T, probability), axis=0)
 
         fold += 1
-
-    N_images = len(test_metadata_T['File name'].unique())
-    print('Evaluating FROC ' + ' with ' + str(N_images) + ' images' + '\n')
 
     return test_metadata_T, probability_T
