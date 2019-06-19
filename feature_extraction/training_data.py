@@ -6,9 +6,22 @@ from main_flow.flow import process_single_image
 from .build_features_file import read_images
 from evaluation.dice_similarity import dice_similarity
 import progressbar
-from main_flow.split_features import create_features_dataframe, drop_unwanted_features, normalize_dataframe
+from main_flow.split_features import create_features_dataframe, drop_unwanted_features
 
 def __get_optimal_dice(roi_mask, gts):
+    '''
+    Get the dice score of a ROI
+
+    Parameters
+    ----------
+    roi_mask       numpy array binary input mask of the ROI
+    gts            numpy array binary mask regions of the ground truth
+
+    Returns
+    -------
+                    dice score of the region
+
+    '''
 
     values = np.zeros([len(gts), 1])
     for idx in range(0, len(gts)):
@@ -19,6 +32,21 @@ def __get_optimal_dice(roi_mask, gts):
 
 
 def label_findings(gt_path, filename, features, groundtruths_filenames):
+    '''
+    Find the label of the ROI TP(1) if dice score > 0.2, otherwise FP(0)
+    Parameters
+    ----------
+    gt_path         path of the ground truth images
+    filename        name of the image to analyse
+    features        features of the image
+    groundtruths_filenames  name of the ground truth image
+
+    Returns
+    -------
+    labels          integer 0 or 1
+    dices           reesulting DICE index of the ROI
+
+    '''
     labels = np.zeros([len(features)])
     dices = np.zeros([len(features)])
 
@@ -58,6 +86,20 @@ def label_findings(gt_path, filename, features, groundtruths_filenames):
 
 
 def __get_features_and_label(dataset_path, images_name):
+    '''
+    calculate the features of all the images of the dataset
+    Parameters
+    ----------
+    dataset_path    String path to the dataset
+    images_name     String name of the input image
+
+    Returns
+    -------
+    total_labels    labels of the ROIs
+    total_features  feature vector of all the ROIs in the image
+    total_dices     Dice score of all the ROIs in the image
+
+    '''
     [raw_im_path, gt_im_path, _, gt_images, _, _] = read_images(dataset_path)
 
     total_labels = []
@@ -83,6 +125,17 @@ def __get_features_and_label(dataset_path, images_name):
 
 
 def partition_data(dataset_path):
+    '''
+    NOT used:  Partition of the data for testing and training
+    Parameters
+    ----------
+    dataset_path:   String path to all the dataset
+
+    Returns
+    -------
+    dataframes:     partitioned dataframes of test and train
+
+    '''
     [raw_im_path, gt_im_path, raw_images, gt_images, _, _] = read_images(dataset_path)
 
     images_with_masses = list(set(raw_images) & set(gt_images))
@@ -112,6 +165,18 @@ def partition_data(dataset_path):
 
 
 def prepate_datasets(dataset_path):
+    '''
+    Prepare the feature extraction of all the dataset
+
+    Parameters
+    ----------
+    dataset_path:   path to the full dataset
+
+    Returns
+    -------
+    CSV files:      dataframe containing the features and dataframe containing metadata of the ROIs
+
+    '''
 
     [training_images_with_masses, training_images_without_masses, testing_images_with_masses, testing_images_without_masses] =\
         partition_data(dataset_path)
@@ -131,18 +196,3 @@ def prepate_datasets(dataset_path):
 
     df_features.to_csv(join(dataset_path, "training.csv"))
     tags.to_csv(join(dataset_path, "training_metadata.csv"))
-    df_features = 0
-    tags = 0
-
-
-    #print("Preparing testing set!\n")
-    #[testing_labels, testing_features, testing_dices] = __get_features_and_label(dataset_path, testing)
-    #[df_features, tags] = create_features_dataframe(testing_features)
-    testing_features = 0
-    #classes_and_dices = pd.DataFrame(np.array([testing_labels, testing_dices]).transpose(), columns=["Class", "Dice"])
-    #tags = pd.concat([tags, classes_and_dices], axis=1)
-    #df_features = drop_unwanted_features(df_features)
-    # df_features = normalize_dataframe(df_features)
-
-    #df_features.to_csv(join(dataset_path, "testing.csv"))
-    #tags.to_csv(join(dataset_path, "testing_metadata.csv"))

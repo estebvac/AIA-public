@@ -16,6 +16,18 @@ CONTOUR_FEATURES_TAGS =\
 
 
 def __unfold_features(list_of_features):
+    '''
+    Unfold the calculated features
+
+    Parameters
+    ----------
+    list_of_features    list of all the extracted features
+
+    Returns
+    -------
+    new_feature_list    list of the features unfolded
+
+    '''
 
     new_feature_list = [None] * len(list_of_features)
     position = 0
@@ -49,7 +61,30 @@ def __unfold_features(list_of_features):
     return new_feature_list
 
 
-def create_entry(path_name, slice_counter, roi_counter, cnt_features, textures, hu_moments, lbp, tas_features, hog_features, contour, layer):
+def create_entry(path_name, slice_counter, roi_counter, cnt_features, textures,
+                 hu_moments, lbp, tas_features, hog_features, contour, layer):
+    '''
+    Create a dictionary of all the extracted features:
+
+    Parameters
+    ----------
+    path_name
+    slice_counter
+    roi_counter
+    cnt_features
+    textures
+    hu_moments
+    lbp
+    tas_features
+    hog_features
+    contour
+    layer
+
+    Returns
+    -------
+    dictionary containing the features
+
+    '''
     dictionary = {
         'File name': path_name,
         'Slice': slice_counter,
@@ -69,6 +104,19 @@ def create_entry(path_name, slice_counter, roi_counter, cnt_features, textures, 
 
 
 def create_features_dataframe(list_of_features):
+    '''
+    Create a dataframe of the extracted features
+
+    Parameters
+    ----------
+    list_of_features:   all the extracted features
+
+    Returns
+    -------
+    dataframe:          pandas dataframe of features
+    tags:               pandas dataframe of metadata
+
+    '''
     dataframe = __unfold_features(list_of_features)
     dataframe = pd.DataFrame(dataframe)
     tags = dataframe[['File name', 'Layer', 'Contour']]
@@ -77,15 +125,18 @@ def create_features_dataframe(list_of_features):
 
 
 def drop_unwanted_features(dataframe):
+    '''
+    Remove features that will not be used
 
+    Parameters
+    ----------
+    dataframe:      pandas dataframe containing all the features
+
+    Returns
+    -------
+    datagrame       pandas dataframe with the features removed
+
+    '''
     dataframe = dataframe.drop("center_of_gravity_x", axis=1)
     dataframe = dataframe.drop("center_of_gravity_y", axis=1)
-    return dataframe
-
-def normalize_dataframe(dataframe):
-    dataframe =\
-        pd.DataFrame(
-            np.transpose(preprocessing.normalize(dataframe.T)),
-            columns=dataframe.columns,
-            index=dataframe.index)
     return dataframe

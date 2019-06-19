@@ -6,7 +6,7 @@ from candidates_detection.find_candidates import find_candidates
 from false_positive_reduction.false_positive_reduction import border_false_positive_reduction
 from evaluation.dice_similarity import extract_ROI
 from feature_extraction.build_features_file import extract_features
-from .split_features import create_entry, create_features_dataframe, drop_unwanted_features, normalize_dataframe
+from .split_features import create_entry, create_features_dataframe, drop_unwanted_features
 
 COLOURS =\
     [(255, 0, 0),
@@ -20,6 +20,19 @@ COLOURS =\
      (255, 100, 100)]
 
 def __generate_outputs (img, rois, output):
+    '''
+    Generate output according to contours in rois
+    Parameters
+    ----------
+    img         numpy array of the input iimage
+    rois        OpenCv contours
+    output      output image
+
+    Returns
+    -------
+    Save an image with the overlaped region of interest
+
+    '''
     normalized_img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
     normalized_img = cv2.cvtColor(normalized_img, cv2.COLOR_GRAY2BGR)
     for roi in rois:
@@ -27,7 +40,21 @@ def __generate_outputs (img, rois, output):
 
     cv2.imwrite(output, normalized_img)
 
+
 def __process_scales(filename, img, all_scales):
+    '''
+    Process the resulting scales of the segmentation
+    Parameters
+    ----------
+    filename:       input filename
+    img             numpy array containing the image
+    all_scales      numpy array containing all the segmented ROIS in all scales
+
+    Returns
+    -------
+    dataframe       dataframe of all the ROIs in the image
+
+    '''
 
     dataframe = []
     for slice_counter in np.arange(all_scales.shape[2]):
@@ -53,23 +80,40 @@ def __process_scales(filename, img, all_scales):
     return dataframe
 
 def process_single_image(path, filename):
+    '''
+    Process a single image extracting the ROIS and the features
+    Parameters
+    ----------
+    path            path where all the dataset is licated
+    filename        file to extract the ROIS
+
+    Returns
+    -------
+    all_scales      Segmentation ROIs of the image
+    features        dataframe of all the features of the ROIs in the image
+    img             numpy arrray containing the image
+
+    '''
     img = cv2.imread(join(path, filename), cv2.IMREAD_UNCHANGED)
     all_scales = find_candidates(img, 3, debug=False)
     all_scales = border_false_positive_reduction(all_scales, img)
     features = __process_scales(join(path, filename), img, all_scales)
     return [all_scales, features, img]
 
-def get_rois_from_image(path, filename):
-    [all_scales, features, img] = process_single_image(path, filename)
-    [df_features, tags] = create_features_dataframe(features)
-    df_features = drop_unwanted_features(df_features)
-    df_features = normalize_dataframe(df_features)
-    df_features.to_csv(path + "out.csv")
-    #Classification.
-    __generate_outputs(img, features, join(path, "out.tif"))
-
 
 def segment_single_image(path, filename):
+    '''
+    Segment single image
+    Parameters
+    ----------
+    path            String path to the dataset
+    filename        String name of the input image
+
+    Returns
+    -------
+    all_scales      segmentated ROIs
+
+    '''
     total_features = []
     [all_scales, features, img] = process_single_image(path, filename)
 

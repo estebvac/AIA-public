@@ -4,6 +4,19 @@ from candidates_detection.utils import get_breast_mask, fill_holes
 
 
 def border_false_positive_reduction(all_scales, original_image):
+    '''
+    Simple false positive reduction, removes the ROI that are on the skin of the
+    mammography and the regions of interest that are smaller than 50x50 pixels.(3.5 mm)
+
+    Parameters
+    ----------
+    all_scales
+    original_image
+
+    Returns
+    -------
+
+    '''
     mask_raw = get_breast_mask(original_image)
     mask = fill_holes(mask_raw)
     mask[:, :500] = 1

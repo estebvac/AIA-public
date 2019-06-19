@@ -4,29 +4,40 @@ import numpy as np
 from math import copysign, log10
 from skimage.feature import hog
 
-def feature_extraction_haralick_candidate(masked_roi):
+
+def feature_extraction_haralick(masked_roi):
+    '''
+    Extract haralick features with Mahotas
+    Parameters
+    ----------
+    masked_roi      ROI to calculate the features
+
+    Returns
+    -------
+    Textures
+
+    '''
     textures = mt.features.haralick(masked_roi, ignore_zeros = True)
     return textures.mean(axis=0)
 
 
-def feature_extraction_haralick(roi):
-    textures = mt.features.haralick(roi)
-    return textures.mean(axis=0)
-
-
-# Hu moments (Shape features)
-def f_hu_moments(bin_roi):
-    #_, bin_roi = cv2.threshold(roi, 128, 255, cv2.THRESH_BINARY)
-    central_moments = cv2.moments(bin_roi, binaryImage = True)
-    hu_moments = cv2.HuMoments(central_moments)
-    # Log scale transform
-    for i in range(0, 7):
-        hu_moments[i] = -1 * copysign(1.0, hu_moments[i]) * log10(abs(hu_moments[i]))
-    return hu_moments
 
 
 # Hu moments (Shape features)
 def feature_hu_moments(contour):
+    '''
+    Calculate the shape features based on HU moments
+
+    Parameters
+    ----------
+    bin_roi     binary version of the ROI
+
+    Returns
+    -------
+    hu_moments  numpy array containing the HU moments
+
+    '''
+
     hu_moments = cv2.HuMoments(cv2.moments(contour))
     # Log scale transform
     for i in range(0, 7):
@@ -35,6 +46,18 @@ def feature_hu_moments(contour):
 
 
 def multi_scale_lbp_features(roi):
+    '''
+    Calculate multi scale local binary pattern based on mahotas
+    Parameters
+    ----------
+    roi:        numpy array of The region of interest(8-bits)
+
+    Returns
+    -------
+    lbp         Histogram of multi scale lbp
+
+
+    '''
     roi_img = cv2.normalize(roi, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
     roi_or = np.copy(roi_img)
     r = 1
@@ -59,10 +82,34 @@ def multi_scale_lbp_features(roi):
     return lbp
 
 def feature_tas(roi):
+    '''
+    Calculate the Threshold Adjacency Statistics features
+
+    Parameters
+    ----------
+    roi         numpy array of The region of interest
+
+    Returns
+    -------
+    tas         numpy array containing the TAS features
+
+    '''
     roi_img = cv2.normalize(roi, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
     return mt.features.tas(roi_img)
 
 def features_hog(roi):
+    '''
+    Calculate a scale based Histogram of Oriented gradients based on ski-image
+
+    Parameters
+    ----------
+    roi             numpy array of The region of interest(8-bits)
+
+    Returns
+    -------
+    hog features    numpy array containing a HOG descriptor of the image
+
+    '''
     width = np.int(roi.shape[0] / 10)
     height = np.int(roi.shape[1] / 10)
     w_t = np.int((roi.shape[0] - width * 10) / 2)
