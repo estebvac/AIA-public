@@ -250,7 +250,7 @@ def build_confusion_matrix(path, dataframe, show=False):
     return np.sum(confusion_matrix, axis=0)
 
 
-def calculate_FROC(path, dataframe, probability, n_samples):
+def calculate_FROC(path, dataframe, probability, n_samples, type_cl = 'RF'):
     '''
     Calculate the TPs, FPs and FNs of the dataframe for multiple operation points
     it returns the points that compose the FROC curve
@@ -273,7 +273,12 @@ def calculate_FROC(path, dataframe, probability, n_samples):
     froc_values[n_samples, :] = np.array([1, 0, 0])
     slope = 10
     # thresholds are selected to emphasize values close to 0 and 1
-    thresholds = 0.5 + 0.5 * np.tanh(slope * np.arange(n_samples) / n_samples - slope / 2)
+    if type_cl == 'RF':
+        thresholds = 1 - 2 / (np.exp(3.5 * np.arange(n_samples) / n_samples + 1))
+        thresholds = np.insert(thresholds, 0, 0)
+    else:
+        thresholds = 0.5 + 0.5 * np.tanh(slope * np.arange(n_samples) / n_samples - slope / 2)
+
     for number in range(0, n_samples):
         # Get the  response at a threshold
         n_samples = np.float32(n_samples)
